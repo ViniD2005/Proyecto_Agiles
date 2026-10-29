@@ -1,0 +1,13 @@
+username,password,firstname,lastname,email,course1,role1,course2,role2
+docente1,Docente#2026,Docente,Uno,docente1@uta.edu.ec,PW-401-B,editingteacher,BD-402-B,editingteacher
+docente2,Docente#2026,Docente,Dos,docente2@uta.edu.ec,,,,
+carlos.mena,Estudiante#2026,Carlos,Mena,carlos.mena@uta.edu.ec,PW-401-B,student,BD-402-B,student
+lucia.ramirez,Estudiante#2026,Lucía,Ramírez,lucia.ramirez@uta.edu.ec,PW-401-B,student,BD-402-B,student
+andres.torres,Estudiante#2026,Andrés,Torres,andres.torres@uta.edu.ec,PW-401-B,student,BD-402-B,student
+sofia.villacis,Estudiante#2026,Sofía,Villacís,sofia.villacis@uta.edu.ec,PW-401-B,student,BD-402-B,student
+diego.paredes,Estudiante#2026,Diego,Paredes,diego.paredes@uta.edu.ec,PW-401-B,student,BD-402-B,student
+valeria.sanchez,Estudiante#2026,Valeria,Sánchez,valeria.sanchez@uta.edu.ec,PW-401-B,student,BD-402-B,student
+joel.herrera,Estudiante#2026,Joel,Herrera,joel.herrera@uta.edu.ec,PW-401-B,student,BD-402-B,student
+camila.nunez,Estudiante#2026,Camila,Núñez,camila.nunez@uta.edu.ec,PW-401-B,student,BD-402-B,student
+bryan.gavilanes,Estudiante#2026,Bryan,Gavilanes,bryan.gavilanes@uta.edu.ec,PW-401-B,student,BD-402-B,student
+daniela.proano,Estudiante#2026,Daniela,Proaño,daniela.proano@uta.edu.ec,PW-401-B,student,BD-402-B,student

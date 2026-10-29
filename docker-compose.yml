@@ -1,0 +1,165 @@
+﻿# EduMonitor AI - entorno completo (HU-03)
+# Uso:  cp .env.example .env   &&   docker compose up -d --build
+name: edumonitor
+
+services:
+  # ---------------- Infraestructura ----------------
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: em-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      MSSQL_PID: Developer
+    ports: ["1433:1433"]
+    volumes: [sqlserver_data:/var/opt/mssql]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: em-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports: ["5672:5672", "15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ---------------- Moodle de prueba (HU-01) ----------------
+  # Nota: Bitnami moviÃ³ sus imÃ¡genes gratuitas a "bitnamilegacy". Si el pull falla,
+  # revisar docs/GUIA_MOODLE.md -> "Imagen alternativa".
+  mariadb:
+    image: bitnamilegacy/mariadb:11.4
+    container_name: em-mariadb
+    environment:
+      MARIADB_USER: bn_moodle
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      MARIADB_DATABASE: bitnami_moodle
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_CHARACTER_SET: utf8mb4
+      MARIADB_COLLATE: utf8mb4_unicode_ci
+    volumes: [mariadb_data:/bitnami/mariadb]
+
+  moodle:
+    image: bitnamilegacy/moodle:4.5
+    container_name: em-moodle
+    depends_on: [mariadb]
+    environment:
+      MOODLE_DATABASE_TYPE: mariadb
+      MOODLE_DATABASE_HOST: mariadb
+      MOODLE_DATABASE_PORT_NUMBER: 3306
+      MOODLE_DATABASE_USER: bn_moodle
+      MOODLE_DATABASE_PASSWORD: ${MARIADB_PASSWORD}
+      MOODLE_DATABASE_NAME: bitnami_moodle
+      MOODLE_USERNAME: ${MOODLE_ADMIN_USER}
+      MOODLE_PASSWORD: ${MOODLE_ADMIN_PASSWORD}
+      MOODLE_EMAIL: ${MOODLE_ADMIN_EMAIL}
+      MOODLE_SITE_NAME: "Moodle de prueba - EduMonitor AI"
+      MOODLE_LANG: es
+    ports: ["8081:8080"]
+    volumes:
+      - moodle_data:/bitnami/moodle
+      - moodledata_data:/bitnami/moodledata
+
+  # ---------------- Microservicios .NET 8 ----------------
+  identity-api:   # MS-A Identidad y Auditoria
+    build:
+      context: .
+      dockerfile: src/Services/Identity/EduMonitor.Identity.Api/Dockerfile
+    container_name: em-identity
+    depends_on:
+      sqlserver: { condition: service_healthy }
+    environment: &common-env
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      Jwt__ExpirationMinutes: ${JWT_EXPIRATION_MINUTES}
+      ConnectionStrings__Default: Server=sqlserver,1433;Database=DB_Identidad;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+      Seed__DefaultPassword: ${SEED_DEFAULT_PASSWORD}
+    ports: ["5001:8080"]
+
+  academic-api:   # MS-B Academico (Moodle + estructura tematica)
+    build:
+      context: .
+      dockerfile: src/Services/Academic/EduMonitor.Academic.Api/Dockerfile
+    container_name: em-academic
+    depends_on:
+      sqlserver: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      ConnectionStrings__Default: Server=sqlserver,1433;Database=DB_Academico;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+      Moodle__BaseUrl: http://moodle:8080
+      Moodle__Token: ${MOODLE_TOKEN}
+      RabbitMq__Host: rabbitmq
+      RabbitMq__User: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+    ports: ["5002:8080"]
+
+  analytics-api:  # MS-C Analitica y Agente IA (esqueleto en Sprint 1)
+    build:
+      context: .
+      dockerfile: src/Services/Analytics/EduMonitor.Analytics.Api/Dockerfile
+    container_name: em-analytics
+    depends_on:
+      sqlserver: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      ConnectionStrings__Default: Server=sqlserver,1433;Database=DB_Analitica;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+      RabbitMq__Host: rabbitmq
+      RabbitMq__User: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+    ports: ["5003:8080"]
+
+  gateway:        # API Gateway (YARP)
+    build:
+      context: .
+      dockerfile: src/Gateway/EduMonitor.Gateway/Dockerfile
+    container_name: em-gateway
+    depends_on: [identity-api, academic-api, analytics-api]
+    environment:
+      Cors__Origins__0: http://localhost:5174
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      ReverseProxy__Clusters__identity__Destinations__d1__Address: http://identity-api:8080/
+      ReverseProxy__Clusters__academic__Destinations__d1__Address: http://academic-api:8080/
+      ReverseProxy__Clusters__analytics__Destinations__d1__Address: http://analytics-api:8080/
+    ports: ["5000:8080"]
+
+  # ---------------- Frontend React ----------------
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:5000
+    container_name: em-frontend
+    depends_on: [gateway]
+    ports: ["5174:80"]
+
+volumes:
+  sqlserver_data:
+  mariadb_data:
+  moodle_data:
+  moodledata_data:
