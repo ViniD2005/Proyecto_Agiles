@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { materiasApi } from '../api/client'
+import { calificacionesApi } from '../api/sprint2'
+import { ESTADOS_NOTA, fechaHora, fmt } from '../components/formato'
 import Etiqueta from '../components/Etiqueta'
 import Paginacion from '../components/Paginacion'
+import '../styles-sprint2.css'
 
 const TIPOS = [
   { valor: '', texto: 'Todas' },
@@ -12,7 +15,10 @@ const TIPOS = [
 ]
 const PAGE_SIZE = 8
 
-/** Mockup M3 - Estudiantes y actividades de la materia (HU-06). */
+/**
+ * Mockup M3 - Estudiantes y actividades de la materia (HU-06).
+ * Sprint 2 (HU-07): botón «Sincronizar» con la última sincronización y sus errores, y calificaciones con su estado.
+ */
 export default function MateriaDetalle() {
   const { id } = useParams()
   const [materia, setMateria] = useState(null)
@@ -25,7 +31,12 @@ export default function MateriaDetalle() {
   const [tipo, setTipo] = useState('')
   const [actividades, setActividades] = useState([])
 
-  useEffect(() => {
+  const [sincronizando, setSincronizando] = useState(false)
+  const [resultado, setResultado] = useState(null)
+  const [notas, setNotas] = useState(null)
+  const [pageNotas, setPageNotas] = useState(1)
+
+  const cargarMateria = useCallback(() => {
     materiasApi.obtener(id).then(setMateria).catch(e =>
       setError(e.status === 403 ? 'No tienes permiso para ver esta materia (pertenece a otro docente).' :
                e.status === 404 ? 'La materia no existe.' : e.message))
@@ -35,17 +46,37 @@ export default function MateriaDetalle() {
     materiasApi.estudiantes(id, { buscar, page, pageSize: PAGE_SIZE }).then(setEstudiantes).catch(() => {})
   }, [id, buscar, page])
 
-  useEffect(() => {
-    const t = setTimeout(cargarEstudiantes, 250) // pequeña espera mientras se escribe
-    return () => clearTimeout(t)
-  }, [cargarEstudiantes])
-
-  useEffect(() => {
+  const cargarActividades = useCallback(() => {
     materiasApi.actividades(id, { tipo }).then(r => setActividades(r.items)).catch(() => {})
   }, [id, tipo])
 
+  const cargarNotas = useCallback(() => {
+    calificacionesApi.listar(id, { page: pageNotas, pageSize: PAGE_SIZE }).then(setNotas).catch(() => setNotas(null))
+  }, [id, pageNotas])
+
+  useEffect(() => { cargarMateria() }, [cargarMateria])
+  useEffect(() => { const t = setTimeout(cargarEstudiantes, 250); return () => clearTimeout(t) }, [cargarEstudiantes])
+  useEffect(() => { cargarActividades() }, [cargarActividades])
+  useEffect(() => { cargarNotas() }, [cargarNotas])
+
+  const sincronizar = async () => {
+    setSincronizando(true); setResultado(null)
+    try {
+      const r = await materiasApi.sincronizar(id)
+      setResultado({ tipo: 'ok', texto: `${r.mensaje} · ${fechaHora(r.fecha)}` })
+    } catch (e) {
+      // El servidor responde 502 con el detalle; se conservan los últimos datos sincronizados
+      setResultado({ tipo: 'error', texto: `${e.data?.mensaje || e.message} Se muestran los últimos datos sincronizados.` })
+    } finally {
+      setSincronizando(false)
+      cargarMateria(); cargarEstudiantes(); cargarActividades(); cargarNotas()
+    }
+  }
+
   if (error) return <div className="alerta error">{error} <Link to="/materias">Volver</Link></div>
   if (!materia) return <p className="muted">Cargando…</p>
+
+  const q = `?materia=${materia.id}`
 
   return (
     <>
@@ -53,9 +84,19 @@ export default function MateriaDetalle() {
       <div className="encabezado">
         <div>
           <h1>{materia.nombre} · 1.er parcial</h1>
-          <p className="muted">Estudiantes y actividades leídos desde Moodle (solo lectura)</p>
+          <p className="muted">
+            Estudiantes y actividades leídos desde Moodle (solo lectura) · última sincronización: <strong>{fechaHora(materia.ultimaSincronizacion)}</strong>
+          </p>
+        </div>
+        <div className="acciones">
+          <Link className="btn-secundario" to={`/estructura${q}`}>Estructura temática</Link>
+          <Link className="btn-secundario" to={`/dashboard${q}`}>Dashboard</Link>
+          <button className="btn-primario" onClick={sincronizar} disabled={sincronizando}>
+            {sincronizando ? 'Sincronizando…' : '⟳ Sincronizar notas'}
+          </button>
         </div>
       </div>
+      {resultado && <div className={`alerta ${resultado.tipo}`}>{resultado.texto}</div>}
 
       <div className="dos-columnas">
         <section className="panel">
@@ -69,7 +110,7 @@ export default function MateriaDetalle() {
             <tbody>
               {estudiantes.items.map(e => (
                 <tr key={e.id}>
-                  <td>{e.apellidos} {e.nombres}</td>
+                  <td>{`${e.apellidos} ${e.nombres}`.trim() || '—'}</td>
                   <td className="muted">{e.email || '—'}</td>
                   <td><Etiqueta valor={e.estado} /></td>
                 </tr>
@@ -102,6 +143,43 @@ export default function MateriaDetalle() {
           </table>
         </section>
       </div>
+
+      <section className="panel">
+        <div className="panel-cab">
+          <h3>Calificaciones sincronizadas</h3>
+          <span className="muted">Escala 0–10 · se distingue nota cero, sin entrega y pendiente de calificar</span>
+        </div>
+        {notas && notas.actividades.length > 0 ? (
+          <>
+            <div className="tabla-scroll">
+              <table className="matriz">
+                <thead>
+                  <tr><th>Estudiante</th>{notas.actividades.map(a => <th key={a.id} title={`${a.nombre} (${fmt(a.peso)} %)`}>{a.nombre}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {notas.estudiantes.items.map(e => (
+                    <tr key={e.estudianteId}>
+                      <th scope="row">{e.nombre}</th>
+                      {notas.actividades.map(a => {
+                        const c = e.notas[a.id]
+                        const est = ESTADOS_NOTA[c?.estado] || ESTADOS_NOTA.SinEntrega
+                        return (
+                          <td key={a.id} className={`nota-celda ${est.clase}`} title={est.texto}>
+                            {c?.nota !== null && c?.nota !== undefined ? fmt(c.nota) : <small>{est.texto}</small>}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Paginacion page={pageNotas} pageSize={PAGE_SIZE} total={notas.estudiantes.total} onChange={setPageNotas} />
+          </>
+        ) : (
+          <p className="muted">Aún no hay calificaciones. Presiona «Sincronizar notas».</p>
+        )}
+      </section>
       <p className="muted pie">Ponderación del parcial: 40 % evaluaciones · 30 % APE · 30 % trabajo autónomo (RN-02).</p>
     </>
   )
