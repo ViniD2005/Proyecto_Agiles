@@ -1,0 +1,18 @@
+{
+  "unidades": [
+    { "nombre": "Unidad 1: Fundamentos del desarrollo web", "temas": [
+      { "nombre": "Fundamentos de HTML y CSS", "contenidos": ["Etiquetas semánticas", "Selectores CSS", "Modelo de caja"] },
+      { "nombre": "Diseño responsivo", "contenidos": ["Media queries", "Flexbox"] }
+    ] },
+    { "nombre": "Unidad 2: JavaScript", "temas": [
+      { "nombre": "JavaScript básico", "contenidos": ["Variables y tipos", "Funciones", "Arreglos y objetos"] },
+      { "nombre": "DOM y eventos", "contenidos": ["Selección del DOM", "Manejo de eventos"] }
+    ] },
+    { "nombre": "Unidad 3: Consumo de servicios", "temas": [
+      { "nombre": "Consumo de APIs REST", "contenidos": ["fetch / async", "Códigos HTTP", "JSON"] }
+    ] },
+    { "nombre": "Unidad 4: Frameworks SPA", "temas": [
+      { "nombre": "Frameworks SPA", "contenidos": ["Componentes", "Estado"] }
+    ] }
+  ]
+}

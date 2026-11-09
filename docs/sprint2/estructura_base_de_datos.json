@@ -1,0 +1,19 @@
+{
+  "unidades": [
+    { "nombre": "Unidad 1: Modelo relacional", "temas": [
+      { "nombre": "Modelo entidad-relación", "contenidos": ["Entidades y atributos", "Relaciones y cardinalidad"] },
+      { "nombre": "Normalización", "contenidos": ["Dependencias funcionales", "Formas normales"] }
+    ] },
+    { "nombre": "Unidad 2: Lenguaje SQL", "temas": [
+      { "nombre": "Definición de datos", "contenidos": ["CREATE y ALTER", "Restricciones"] },
+      { "nombre": "Consulta de datos", "contenidos": ["SELECT y filtros", "JOIN", "Agrupación"] }
+    ] },
+    { "nombre": "Unidad 3: Programación en la base de datos", "temas": [
+      { "nombre": "Objetos programables", "contenidos": ["Vistas", "Procedimientos almacenados", "Disparadores"] }
+    ] },
+    { "nombre": "Unidad 4: Transacciones y seguridad", "temas": [
+      { "nombre": "Transacciones", "contenidos": ["Propiedades ACID", "Control de concurrencia"] },
+      { "nombre": "Índices y seguridad", "contenidos": ["Índices", "Roles y permisos"] }
+    ] }
+  ]
+}

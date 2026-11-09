@@ -1,0 +1,12 @@
+EDUMONITOR AI - PAQUETE DEL SPRINT 2
+====================================
+Contiene solo lo del Sprint 2 (archivos nuevos y modificados). Descomprimir EN LA RAIZ del repositorio.
+
+1) Lea docs/SPRINT2.md (guia completa y comandos de Git).
+2) Prepare Moodle (seccion 4): 1 funcion y 4 capacidades nuevas + 1 entrega de prueba.
+3) git checkout -b feature/sprint-2  ->  descomprimir  ->  git diff
+4) dotnet sln EduMonitor.sln add tests/EduMonitor.Analytics.Tests/EduMonitor.Analytics.Tests.csproj
+   dotnet build EduMonitor.sln ; dotnet test EduMonitor.sln   (esperado: 90 pruebas correctas)
+5) dotnet ef migrations add Inicial (x3)  ->  .\scripts\reset-databases.ps1  ->  docker compose up -d --build
+
+Si algo falla, copie el mensaje completo y se corrige.

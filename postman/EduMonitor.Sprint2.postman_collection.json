@@ -1,0 +1,1110 @@
+{
+  "info": {
+    "name": "EduMonitor AI - Sprint 2",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Pruebas de API del Sprint 2 (HU-07 a HU-12). Orden: Login docente1 → Sincronización → Estructura → Mapeo → Análisis → Permisos. Ajustar materia_id (id de Programación Web en EduMonitor)."
+  },
+  "variable": [
+    {
+      "key": "gateway",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "password",
+      "value": "Docente#2026"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "materia_id",
+      "value": "2"
+    },
+    {
+      "key": "actividad_id",
+      "value": ""
+    },
+    {
+      "key": "contenido_id",
+      "value": ""
+    },
+    {
+      "key": "estudiante_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0 · Autenticación",
+      "item": [
+        {
+          "name": "Login docente1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{gateway}}/api/auth/login",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"docente1@uta.edu.ec\", \"password\": \"{{password}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-07 · Calificaciones",
+      "item": [
+        {
+          "name": "Sincronizar materia (estudiantes, actividades y notas)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/sincronizar",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "sincronizar"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Sincronización OK (mensaje incluye calificaciones)', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Calificaciones sincronizadas (matriz)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/calificaciones?page=1&pageSize=10",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "calificaciones"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('Devuelve actividades y estudiantes', () => { pm.expect(j.actividades.length).to.be.above(0); pm.expect(j.estudiantes.items.length).to.be.above(0); });",
+                  "const ests = ['Calificada','Cero','SinEntrega','PendienteDeCalificar'];",
+                  "const estados = new Set(); j.estudiantes.items.forEach(e => Object.values(e.notas).forEach(n => estados.add(n.estado)));",
+                  "pm.test('Los estados son válidos (RN-08)', () => estados.forEach(s => pm.expect(ests).to.include(s)));",
+                  "if (j.estudiantes.items.length) pm.collectionVariables.set('estudiante_id', j.estudiantes.items[0].estudianteId);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-08 · Estructura temática",
+      "item": [
+        {
+          "name": "Importar sílabo (solo si la materia está vacía)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/estructura/importar",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "estructura",
+                "importar"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unidades\": [\n    {\n      \"nombre\": \"Unidad 1: Fundamentos del desarrollo web\",\n      \"temas\": [\n        {\n          \"nombre\": \"Fundamentos de HTML y CSS\",\n          \"contenidos\": [\n            \"Etiquetas semánticas\",\n            \"Selectores CSS\",\n            \"Modelo de caja\"\n          ]\n        },\n        {\n          \"nombre\": \"Diseño responsivo\",\n          \"contenidos\": [\n            \"Media queries\",\n            \"Flexbox\"\n          ]\n        }\n      ]\n    },\n    {\n      \"nombre\": \"Unidad 2: JavaScript\",\n      \"temas\": [\n        {\n          \"nombre\": \"JavaScript básico\",\n          \"contenidos\": [\n            \"Variables y tipos\",\n            \"Funciones\",\n            \"Arreglos y objetos\"\n          ]\n        },\n        {\n          \"nombre\": \"DOM y eventos\",\n          \"contenidos\": [\n            \"Selección del DOM\",\n            \"Manejo de eventos\"\n          ]\n        }\n      ]\n    },\n    {\n      \"nombre\": \"Unidad 3: Consumo de servicios\",\n      \"temas\": [\n        {\n          \"nombre\": \"Consumo de APIs REST\",\n          \"contenidos\": [\n            \"fetch / async\",\n            \"Códigos HTTP\",\n            \"JSON\"\n          ]\n        }\n      ]\n    },\n    {\n      \"nombre\": \"Unidad 4: Frameworks SPA\",\n      \"temas\": [\n        {\n          \"nombre\": \"Frameworks SPA\",\n          \"contenidos\": [\n            \"Componentes\",\n            \"Estado\"\n          ]\n        }\n      ]\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 creada o 409 si ya existe', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener estructura",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/estructura",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "estructura"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('Tiene unidades', () => pm.expect(j.unidades.length).to.be.above(0));",
+                  "if (j.unidades.length) pm.collectionVariables.set('contenido_id', j.unidades[0].temas[0].contenidos[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear unidad duplicada (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/estructura",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "estructura"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nivel\": \"unidad\",\n  \"nombre\": \"Unidad 1: Fundamentos del desarrollo web\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Rechaza nombres duplicados', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear con nombre vacío (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/estructura",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "estructura"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nivel\": \"unidad\",\n  \"nombre\": \"   \"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Valida el nombre', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-09 · Mapeo",
+      "item": [
+        {
+          "name": "Actividades y contenidos (pendientes)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/mapeo",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "mapeo"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('Devuelve actividades', () => pm.expect(j.actividades.length).to.be.above(0));",
+                  "pm.collectionVariables.set('actividad_id', j.actividades[0].actividadId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Asignar un contenido a la actividad",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/actividades/{{actividad_id}}/contenidos",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "actividades",
+                "{{actividad_id}}",
+                "contenidos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contenidoIds\": [\n    {{contenido_id}}\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Actividad ya no está pendiente', () => pm.expect(j.actividad.pendiente).to.eql(false));",
+                  "pm.test('Evento MapeoActividadActualizado publicado', () => pm.expect(j.eventoPublicado).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar contenido asignado sin confirmar (409)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/estructura/contenido/{{contenido_id}}",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "estructura",
+                "contenido",
+                "{{contenido_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Pide confirmación', () => pm.response.to.have.status(409));",
+                  "pm.test('Indica actividades afectadas', () => pm.expect(pm.response.json().requiereConfirmacion).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-10 · Indicadores",
+      "item": [
+        {
+          "name": "Indicadores del curso y por actividad",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/indicadores",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "indicadores"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('Escala 0-10 y estadística', () => { pm.expect(j.escala).to.eql('0–10'); pm.expect(j.curso.promedio).to.be.a('number'); });",
+                  "pm.test('Histograma de 6 rangos', () => pm.expect(j.curso.distribucion.length).to.eql(6));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-11 · Riesgo y alertas",
+      "item": [
+        {
+          "name": "Riesgo con umbrales por defecto",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/riesgo",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "riesgo"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('Aviso orientativo (RN-10)', () => pm.expect(j.aviso).to.include('orientativos'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cambiar umbrales y recalcular",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/umbrales",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "umbrales"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"materiaId\": {{materia_id}},\n  \"critico\": 4,\n  \"aprobado\": 7\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('Umbrales personalizados', () => pm.expect(pm.response.json().umbrales.critico).to.eql(4));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restaurar umbrales por defecto (5 y 7)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/umbrales",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "umbrales"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"materiaId\": {{materia_id}},\n  \"critico\": 5,\n  \"aprobado\": 7\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Restaurados', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Umbrales inválidos (400)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/umbrales",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "umbrales"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"materiaId\": {{materia_id}},\n  \"critico\": 8,\n  \"aprobado\": 7\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Rechaza crítico ≥ aprobado', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-12 · Mapa de calor y ficha",
+      "item": [
+        {
+          "name": "Desempeño por tema y contenido",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/desempeno-por-tema",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "desempeno-por-tema"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('Devuelve temas y estudiantes', () => { pm.expect(j.temas.length).to.be.above(0); pm.expect(j.estudiantes.length).to.be.above(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ficha del estudiante",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/fichas/{{estudiante_id}}",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "fichas",
+                "{{estudiante_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('Notas con estado y temas relacionados', () => { pm.expect(j.actividades.length).to.be.above(0); pm.expect(j.aviso).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Permisos (RN-07)",
+      "item": [
+        {
+          "name": "Login docente2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{gateway}}/api/auth/login",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"docente2@uta.edu.ec\", \"password\": \"{{password}}\"}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "docente2 lee la estructura de docente1 (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/estructura",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "estructura"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Acceso denegado', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "docente2 mapea una actividad ajena (403)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/actividades/{{actividad_id}}/contenidos",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "actividades",
+                "{{actividad_id}}",
+                "contenidos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contenidoIds\": []\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Acceso denegado', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "docente2 lee los indicadores ajenos (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/indicadores",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "indicadores"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Acceso denegado', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "docente2 cambia umbrales ajenos (403)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/umbrales",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "umbrales"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"materiaId\": {{materia_id}},\n  \"critico\": 5,\n  \"aprobado\": 7\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Acceso denegado', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "docente2 lee una ficha ajena (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/fichas/{{estudiante_id}}",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "fichas",
+                "{{estudiante_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Acceso denegado', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
