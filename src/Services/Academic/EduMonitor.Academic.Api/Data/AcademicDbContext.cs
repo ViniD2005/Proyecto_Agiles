@@ -11,6 +11,13 @@ public class AcademicDbContext(DbContextOptions<AcademicDbContext> options) : Db
     public DbSet<Actividad> Actividades => Set<Actividad>();
     public DbSet<SincronizacionLog> Sincronizaciones => Set<SincronizacionLog>();
 
+    // Sprint 2
+    public DbSet<Calificacion> Calificaciones => Set<Calificacion>();
+    public DbSet<Unidad> Unidades => Set<Unidad>();
+    public DbSet<Tema> Temas => Set<Tema>();
+    public DbSet<ContenidoMinimo> Contenidos => Set<ContenidoMinimo>();
+    public DbSet<ActividadContenido> Mapeos => Set<ActividadContenido>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         b.Entity<Materia>(e =>
@@ -61,6 +68,51 @@ public class AcademicDbContext(DbContextOptions<AcademicDbContext> options) : Db
             e.Property(x => x.Mensaje).HasMaxLength(1000);
             e.Property(x => x.UsuarioEmail).HasMaxLength(150);
             e.HasIndex(x => x.Fecha);
+        });
+
+        // ---------------- Sprint 2 ----------------
+        b.Entity<Calificacion>(e =>
+        {
+            e.ToTable("Calificaciones");
+            e.HasIndex(x => new { x.ActividadId, x.EstudianteId }).IsUnique();
+            e.Property(x => x.Nota).HasPrecision(5, 2);
+            e.Property(x => x.Estado).HasConversion<string>().HasMaxLength(25);
+            e.HasOne(x => x.Actividad).WithMany().HasForeignKey(x => x.ActividadId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Estudiante).WithMany().HasForeignKey(x => x.EstudianteId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<Unidad>(e =>
+        {
+            e.ToTable("Unidades");
+            e.HasIndex(x => new { x.MateriaId, x.Nombre }).IsUnique();
+            e.Property(x => x.Nombre).HasMaxLength(200).IsRequired();
+            e.HasOne(x => x.Materia).WithMany().HasForeignKey(x => x.MateriaId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<Tema>(e =>
+        {
+            e.ToTable("Temas");
+            e.HasIndex(x => new { x.UnidadId, x.Nombre }).IsUnique();
+            e.Property(x => x.Nombre).HasMaxLength(200).IsRequired();
+            e.HasOne(x => x.Unidad).WithMany(u => u.Temas).HasForeignKey(x => x.UnidadId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ContenidoMinimo>(e =>
+        {
+            e.ToTable("ContenidosMinimos");
+            e.HasIndex(x => new { x.TemaId, x.Nombre }).IsUnique();
+            e.Property(x => x.Nombre).HasMaxLength(200).IsRequired();
+            e.HasOne(x => x.Tema).WithMany(t => t.Contenidos).HasForeignKey(x => x.TemaId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ActividadContenido>(e =>
+        {
+            e.ToTable("ActividadContenido");
+            e.HasKey(x => new { x.ActividadId, x.ContenidoId });
+            e.HasOne(x => x.Actividad).WithMany().HasForeignKey(x => x.ActividadId).OnDelete(DeleteBehavior.Cascade);
+            // Restrict: evita «múltiples rutas de cascada» en SQL Server. Los mapeos de un contenido
+            // se eliminan explícitamente en EstructuraService antes de borrar el contenido.
+            e.HasOne(x => x.Contenido).WithMany().HasForeignKey(x => x.ContenidoId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }
