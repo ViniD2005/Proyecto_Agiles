@@ -1,34 +1,22 @@
+using EduMonitor.Common.Persistence;
 using EduMonitor.Identity.Api.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace EduMonitor.Identity.Api.Data;
 
 /// <summary>
-/// Crea la base (si no existe) y siembra usuarios de prueba.
-/// Los correos de los docentes deben existir también en el Moodle de prueba (moodle/usuarios_moodle.csv).
+/// Aplica las migraciones y siembra usuarios de prueba.
+/// Los correos de los docentes deben existir también en el Moodle de prueba (moodle/2_usuarios.csv).
 /// </summary>
 public static class DbSeeder
 {
     public static async Task SeedAsync(IServiceProvider sp, IConfiguration config, ILogger logger)
     {
+        // Sprint 2: migraciones de EF Core (antes EnsureCreated), con reintentos mientras SQL Server inicia
+        await DatabaseMigrator.MigrateWithRetryAsync<IdentityDbContext>(sp, logger);
+
         using var scope = sp.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-
-        // SQL Server tarda en arrancar: reintentos simples
-        for (var intento = 1; ; intento++)
-        {
-            try
-            {
-                // Sprint 1: EnsureCreated. Cuando el modelo se estabilice -> dotnet ef migrations add Inicial + Migrate()
-                await db.Database.EnsureCreatedAsync();
-                break;
-            }
-            catch (Exception ex) when (intento < 10)
-            {
-                logger.LogWarning("BD no disponible (intento {Intento}): {Msg}", intento, ex.Message);
-                await Task.Delay(TimeSpan.FromSeconds(5));
-            }
-        }
 
         if (await db.Usuarios.AnyAsync()) return;
 
