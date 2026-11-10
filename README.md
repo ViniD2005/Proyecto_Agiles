@@ -123,3 +123,18 @@ ConvenciÃ³n de commits: `feat`, `fix`, `test`, `docs`, `chore` + `(HU-xx)`.
 - **Secretos:** solo en `.env` (no versionado). El token de Moodle y la clave JWT nunca se escriben en el cÃ³digo.
 - **Moodle de solo lectura (RN-06):** el token solo tiene funciones de consulta.
 - **ClasificaciÃ³n de actividades:** en el Sprint 1 se hace por el nombre de la actividad (`ActivityClassifier`). En el Sprint 2 se contrasta con las categorÃ­as del libro de calificaciones.
+
+## Sprint 2 · Planificación académica y analítica
+
+| Historia | Qué hace |
+|---|---|
+| HU-07 | Sincroniza las calificaciones de Moodle (nota cero, sin entrega y pendiente de calificar) |
+| HU-08 / HU-09 | Estructura temática (unidades, temas, contenidos) y mapeo actividad ↔ contenidos |
+| HU-10 / HU-11 | Indicadores, niveles de riesgo con umbrales configurables y alertas con evidencia |
+| HU-12 | Mapa de calor por tema y ficha del estudiante |
+
+- Las tablas se crean con **migraciones de EF Core** al arrancar cada servicio.
+- MS-B publica `CalificacionesSincronizadas` y `MapeoActividadActualizado` por RabbitMQ; MS-C los consume y recalcula.
+- Moodle: agregar la función `mod_assign_get_submissions` y las capacidades `gradereport/user:view`, `mod/assign:viewgrades`, `moodle/grade:viewall` y `moodle/grade:view` al rol del servicio web.
+- Guía completa, pruebas y datos de ejemplo: `docs/SPRINT2.md`.
+- Colección de Postman: `postman/EduMonitor.Sprint2.postman_collection.json`.

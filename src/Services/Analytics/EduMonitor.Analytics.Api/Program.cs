@@ -1,5 +1,9 @@
 using EduMonitor.Analytics.Api.Data;
+using EduMonitor.Analytics.Api.Messaging;
+using EduMonitor.Analytics.Api.Services;
 using EduMonitor.Common;
+using EduMonitor.Common.Messaging;
+using EduMonitor.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -13,21 +17,17 @@ builder.Services.AddEduMonitorSwagger("MS-C · Analítica y Agente IA");
 builder.Services.AddControllers();
 builder.Services.AddHealthChecks().AddDbContextCheck<AnalyticsDbContext>("sqlserver");
 
+// Sprint 2: servicios de análisis y consumo de eventos de RabbitMQ
+builder.Services.AddRabbitMq(builder.Configuration);
+builder.Services.AddScoped<RecalculoService>();
+builder.Services.AddScoped<SnapshotIngestor>();
+builder.Services.AddScoped<AnaliticaService>();
+builder.Services.AddHostedService<AnalyticsEventConsumer>();
+
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
-    for (var i = 1; ; i++)
-    {
-        try { await db.Database.EnsureCreatedAsync(); break; }
-        catch (Exception ex) when (i < 10)
-        {
-            app.Logger.LogWarning("BD no disponible (intento {I}): {Msg}", i, ex.Message);
-            await Task.Delay(TimeSpan.FromSeconds(5));
-        }
-    }
-}
+// Migraciones de EF Core con reintentos (SQL Server tarda en iniciar). Reemplaza a EnsureCreated del Sprint 1.
+await DatabaseMigrator.MigrateWithRetryAsync<AnalyticsDbContext>(app.Services, app.Logger);
 
 app.UseSerilogRequestLogging();
 app.UseSwagger();

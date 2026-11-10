@@ -1,0 +1,102 @@
+/* Sprint 2 · estilos de las pantallas M4 a M8 (reutiliza las variables de styles.css) */
+:root {
+  --critico-bg: #fee2e2; --critico-tx: #991b1b; --critico-bd: #fca5a5;
+  --umbral-bg: #fef3c7; --umbral-tx: #92400e; --umbral-bd: #fcd34d;
+  --aprobado-bg: #dcfce7; --aprobado-tx: #166534; --aprobado-bd: #86efac;
+  --sindatos-bg: #f1f5f9; --sindatos-tx: #64748b;
+}
+.acciones { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
+.acciones-mini { display: flex; gap: .35rem; }
+.acciones-mini button, .chip button { background: none; border: 1px solid var(--borde); border-radius: 6px; padding: .15rem .5rem; font-size: .8rem; color: var(--muted); }
+.acciones-mini button:hover, .chip button:hover { color: var(--primario); border-color: var(--primario); }
+.alerta.aviso { background: var(--umbral-bg); color: var(--umbral-tx); }
+.alerta ul { margin: .35rem 0 0 1.1rem; padding: 0; }
+.panel h3.sub { margin-top: 1.25rem; }
+.selector-materia { display: inline-flex; align-items: center; gap: .6rem; margin: .25rem 0 1rem; font-size: .9rem; }
+.selector-materia select { min-width: 280px; }
+.tabla-scroll { overflow-x: auto; }
+.panel { margin-bottom: 1.25rem; }
+.vacio h3 { margin-bottom: .4rem; }
+
+/* Modal */
+.modal-fondo { position: fixed; inset: 0; background: rgba(15, 23, 42, .45); display: grid; place-items: center; z-index: 50; }
+.modal { background: #fff; border-radius: 12px; padding: 1.4rem 1.6rem; width: min(440px, 92vw); box-shadow: 0 20px 50px rgba(15, 23, 42, .25); }
+.form-modal { display: flex; flex-direction: column; gap: .8rem; margin-top: .8rem; }
+.form-modal label { display: flex; flex-direction: column; gap: .3rem; font-size: .85rem; font-weight: 500; }
+
+/* Estructura temática (M4) */
+.unidad > header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--borde); padding-bottom: .6rem; margin-bottom: .6rem; }
+.tema { padding: .55rem 0; border-bottom: 1px dashed var(--borde); }
+.tema:last-child { border-bottom: 0; }
+.tema-cab { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; }
+.chip { display: inline-flex; align-items: center; gap: .35rem; background: #eff6ff; color: #1e40af; border-radius: 999px; padding: .2rem .3rem .2rem .7rem; font-size: .82rem; }
+.chip em { background: #1e40af; color: #fff; border-radius: 999px; font-style: normal; font-size: .7rem; padding: 0 .4rem; }
+.chip button { padding: 0 .35rem; border: 0; }
+textarea.json { width: 100%; font-family: ui-monospace, monospace; font-size: .82rem; border: 1px solid var(--borde); border-radius: 8px; padding: .6rem; margin: .6rem 0; }
+
+/* Mapeo (M5) */
+.lista-seleccion { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .4rem; }
+.lista-seleccion button { width: 100%; text-align: left; display: flex; flex-direction: column; gap: .15rem; background: #fff; border: 1px solid var(--borde); border-radius: 8px; padding: .6rem .8rem; }
+.lista-seleccion button.activa { border-color: var(--primario); background: #eff6ff; }
+.pendiente-txt { color: var(--critico-tx); font-size: .78rem; }
+.grupo { border: 1px solid var(--borde); border-radius: 8px; margin: 0 0 .8rem; padding: .5rem .9rem .8rem; }
+.grupo legend { font-weight: 600; font-size: .85rem; padding: 0 .4rem; }
+.tema-nombre { margin: .5rem 0 .2rem; font-size: .8rem; color: var(--muted); }
+.check { display: flex; align-items: center; gap: .5rem; padding: .15rem 0; font-size: .9rem; }
+
+/* Dashboard (M6) */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin-bottom: .5rem; }
+.kpi { background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio); padding: .9rem 1.1rem; }
+.kpi strong { display: block; font-size: 2rem; font-weight: 600; line-height: 1.1; }
+.kpi span { font-size: .8rem; color: var(--muted); }
+.kpi.critico strong { color: #dc2626; } .kpi.umbral strong { color: #d97706; } .kpi.aprobado strong { color: #16a34a; }
+.nota-peso { margin: .25rem 0 1rem; font-size: .85rem; }
+.histograma { display: flex; align-items: flex-end; gap: .6rem; height: 190px; padding: 1.4rem .3rem 0; }
+.histograma .col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: .25rem; }
+.histograma .barra { width: 100%; min-height: 2px; background: var(--primario); border-radius: 4px 4px 0 0; }
+.histograma .valor { font-size: .8rem; font-weight: 600; } .histograma .rango { font-size: .72rem; color: var(--muted); }
+.alerta-txt { font-size: .8rem; color: var(--muted); max-width: 240px; }
+.nivel, .estado-nota { display: inline-block; padding: .12rem .6rem; border-radius: 999px; font-size: .75rem; font-weight: 600; white-space: nowrap; }
+.nivel.critico, .estado-nota.cero { background: var(--critico-bg); color: var(--critico-tx); }
+.nivel.umbral, .estado-nota.pendiente { background: var(--umbral-bg); color: var(--umbral-tx); }
+.nivel.aprobado, .estado-nota.calificada { background: var(--aprobado-bg); color: var(--aprobado-tx); }
+.nivel.sindatos, .estado-nota.sinentrega { background: var(--sindatos-bg); color: var(--sindatos-tx); }
+
+/* Mapa de calor (M7) */
+.segmentado { display: inline-flex; border: 1px solid var(--borde); border-radius: 8px; overflow: hidden; }
+.segmentado button { background: #fff; border: 0; padding: .4rem .9rem; font-size: .85rem; }
+.segmentado button.activa { background: var(--primario); color: #fff; }
+.leyenda { display: flex; gap: .4rem; flex-wrap: wrap; font-size: .75rem; }
+.leyenda .celda { padding: .15rem .6rem; border-radius: 6px; }
+table.mapa th, table.mapa td { text-align: center; }
+table.mapa th:first-child, table.mapa tbody th { text-align: left; white-space: nowrap; }
+.celda { font-variant-numeric: tabular-nums; font-weight: 600; }
+td.celda.critico, .celda.critico { background: var(--critico-bg); color: var(--critico-tx); }
+td.celda.umbral, .celda.umbral { background: var(--umbral-bg); color: var(--umbral-tx); }
+td.celda.aprobado, .celda.aprobado { background: var(--aprobado-bg); color: var(--aprobado-tx); }
+td.celda.sindatos, .celda.sindatos { background: var(--sindatos-bg); color: var(--sindatos-tx); font-weight: 400; }
+tr.curso th, tr.curso td { border-top: 2px solid var(--borde); }
+
+/* Ficha (M8) */
+.ficha-cab { display: flex; align-items: center; gap: 1rem; }
+.avatar.grande { width: 54px; height: 54px; font-size: 1.1rem; border-radius: 50%; background: var(--primario); color: #fff; display: grid; place-items: center; font-weight: 600; }
+.relacion { margin: .3rem 0 0; padding-left: 1rem; font-size: .76rem; color: var(--muted); }
+.barra-tema { margin-bottom: .7rem; font-size: .85rem; }
+.barra-tema > div:first-child { display: flex; justify-content: space-between; }
+.pista { background: #f1f5f9; border-radius: 999px; height: 8px; overflow: hidden; margin-top: .25rem; }
+.relleno { height: 100%; border-radius: 999px; }
+.relleno.critico { background: #dc2626; } .relleno.umbral { background: #f59e0b; } .relleno.aprobado { background: #22c55e; }
+.evolucion { width: 100%; max-width: 420px; }
+.alertas-ficha { border-left: 4px solid #dc2626; }
+.alertas-ficha ul { padding-left: 1.1rem; }
+.alertas-ficha li { margin-bottom: .6rem; }
+
+/* Calificaciones (HU-07) */
+table.matriz th, table.matriz td { text-align: center; font-size: .8rem; }
+table.matriz tbody th { text-align: left; white-space: nowrap; }
+.nota-celda { font-variant-numeric: tabular-nums; font-weight: 600; }
+.nota-celda.calificada { background: var(--aprobado-bg); color: var(--aprobado-tx); }
+.nota-celda.cero { background: var(--critico-bg); color: var(--critico-tx); }
+.nota-celda.pendiente { background: var(--umbral-bg); color: var(--umbral-tx); }
+.nota-celda.sinentrega { background: var(--sindatos-bg); color: var(--sindatos-tx); font-weight: 400; }

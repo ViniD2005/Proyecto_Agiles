@@ -12,6 +12,12 @@ public interface IMoodleClient
     Task<IReadOnlyList<MoodleCourse>> GetUserCoursesAsync(int userId, CancellationToken ct = default);
     Task<IReadOnlyList<MoodleUser>> GetEnrolledUsersAsync(int courseId, CancellationToken ct = default);
     Task<IReadOnlyList<MoodleSection>> GetCourseContentsAsync(int courseId, CancellationToken ct = default);
+
+    /// <summary>Ítems y calificaciones del curso (gradereport_user_get_grade_items). userId = 0 devuelve todos los estudiantes.</summary>
+    Task<IReadOnlyList<MoodleUserGrades>> GetGradeItemsAsync(int courseId, int userId = 0, CancellationToken ct = default);
+
+    /// <summary>Entregas de las tareas indicadas (mod_assign_get_submissions); sirve para distinguir «sin entrega» de «pendiente de calificar».</summary>
+    Task<IReadOnlyList<MoodleAssignSubmissions>> GetAssignSubmissionsAsync(IReadOnlyCollection<int> assignmentIds, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -20,7 +26,12 @@ public interface IMoodleClient
 /// </summary>
 public class MoodleClient(HttpClient http, IOptions<MoodleOptions> options, ILogger<MoodleClient> logger) : IMoodleClient
 {
-    private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions Json = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        // Moodle a veces devuelve números como texto ("8.5")
+        NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
+    };
     private readonly MoodleOptions _opt = options.Value;
 
     public string BaseUrl => _opt.BaseUrl;
@@ -46,6 +57,23 @@ public class MoodleClient(HttpClient http, IOptions<MoodleOptions> options, ILog
     public async Task<IReadOnlyList<MoodleSection>> GetCourseContentsAsync(int courseId, CancellationToken ct = default) =>
         await CallAsync<List<MoodleSection>>("core_course_get_contents",
             new() { ["courseid"] = courseId.ToString() }, ct);
+
+    public async Task<IReadOnlyList<MoodleUserGrades>> GetGradeItemsAsync(int courseId, int userId = 0, CancellationToken ct = default)
+    {
+        var r = await CallAsync<MoodleUserGradesResponse>("gradereport_user_get_grade_items",
+            new() { ["courseid"] = courseId.ToString(), ["userid"] = userId.ToString() }, ct);
+        return r.UserGrades ?? new List<MoodleUserGrades>();
+    }
+
+    public async Task<IReadOnlyList<MoodleAssignSubmissions>> GetAssignSubmissionsAsync(IReadOnlyCollection<int> assignmentIds, CancellationToken ct = default)
+    {
+        if (assignmentIds.Count == 0) return Array.Empty<MoodleAssignSubmissions>();
+        var parameters = new Dictionary<string, string>();
+        var i = 0;
+        foreach (var id in assignmentIds) parameters[$"assignmentids[{i++}]"] = id.ToString();
+        var r = await CallAsync<MoodleSubmissionsResponse>("mod_assign_get_submissions", parameters, ct);
+        return r.Assignments ?? new List<MoodleAssignSubmissions>();
+    }
 
     private async Task<T> CallAsync<T>(string function, Dictionary<string, string> parameters, CancellationToken ct)
     {

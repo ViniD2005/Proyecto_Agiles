@@ -4,6 +4,11 @@ import Layout from './components/Layout'
 import Login from './pages/Login'
 import MisMaterias from './pages/MisMaterias'
 import MateriaDetalle from './pages/MateriaDetalle'
+import EstructuraTematica from './pages/EstructuraTematica'
+import MapeoActividades from './pages/MapeoActividades'
+import DashboardCurso from './pages/DashboardCurso'
+import MapaCalor from './pages/MapaCalor'
+import FichaEstudiante from './pages/FichaEstudiante'
 import Proximamente from './pages/Proximamente'
 import AdminInicio from './pages/AdminInicio'
 import { ROLES, useAuth } from './auth/AuthContext'
@@ -24,8 +29,15 @@ export default function App() {
       <Route element={<ProtectedRoute roles={[ROLES.DOCENTE]}><Layout /></ProtectedRoute>}>
         <Route path="/materias" element={<MisMaterias />} />
         <Route path="/materias/:id" element={<MateriaDetalle />} />
-        <Route path="/estructura" element={<Proximamente titulo="Estructura temática" sprint={2} historia="HU-08" />} />
-        <Route path="/dashboard" element={<Proximamente titulo="Dashboard del curso" sprint={2} historia="HU-10 / HU-11" />} />
+
+        {/* Sprint 2 */}
+        <Route path="/estructura" element={<EstructuraTematica />} />
+        <Route path="/estructura/mapeo" element={<MapeoActividades />} />
+        <Route path="/dashboard" element={<DashboardCurso />} />
+        <Route path="/dashboard/mapa-calor" element={<MapaCalor />} />
+        <Route path="/dashboard/ficha/:estudianteId" element={<FichaEstudiante />} />
+
+        {/* Sprint 3 */}
         <Route path="/agente" element={<Proximamente titulo="Agente IA" sprint={3} historia="HU-13 / HU-14" />} />
         <Route path="/reportes" element={<Proximamente titulo="Reportes" sprint={3} historia="HU-16" />} />
       </Route>

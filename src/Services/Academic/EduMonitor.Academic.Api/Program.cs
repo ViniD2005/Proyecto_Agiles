@@ -2,6 +2,8 @@ using EduMonitor.Academic.Api.Data;
 using EduMonitor.Academic.Api.Moodle;
 using EduMonitor.Academic.Api.Services;
 using EduMonitor.Common;
+using EduMonitor.Common.Messaging;
+using EduMonitor.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Serilog;
@@ -20,7 +22,12 @@ builder.Services.AddHttpClient<IMoodleClient, MoodleClient>((sp, http) =>
     http.BaseAddress = new Uri(opt.BaseUrl.TrimEnd('/') + "/");
     http.Timeout = TimeSpan.FromSeconds(opt.TimeoutSeconds);
 });
+builder.Services.AddRabbitMq(builder.Configuration);
+builder.Services.AddScoped<EventSnapshotBuilder>();
+builder.Services.AddScoped<MapeoEventDispatcher>();
 builder.Services.AddScoped<ISyncService, SyncService>();
+builder.Services.AddScoped<EstructuraService>();
+builder.Services.AddScoped<MapeoService>();
 
 builder.Services.AddEduMonitorAuth(builder.Configuration);
 builder.Services.AddEduMonitorSwagger("MS-B · Académico (Moodle)");
@@ -30,20 +37,8 @@ builder.Services.AddHealthChecks().AddDbContextCheck<AcademicDbContext>("sqlserv
 
 var app = builder.Build();
 
-// Crear BD con reintentos (SQL Server tarda en iniciar)
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AcademicDbContext>();
-    for (var i = 1; ; i++)
-    {
-        try { await db.Database.EnsureCreatedAsync(); break; }
-        catch (Exception ex) when (i < 10)
-        {
-            app.Logger.LogWarning("BD no disponible (intento {I}): {Msg}", i, ex.Message);
-            await Task.Delay(TimeSpan.FromSeconds(5));
-        }
-    }
-}
+// Migraciones de EF Core con reintentos (SQL Server tarda en iniciar). Reemplaza a EnsureCreated del Sprint 1.
+await DatabaseMigrator.MigrateWithRetryAsync<AcademicDbContext>(app.Services, app.Logger);
 
 app.UseSerilogRequestLogging();
 app.UseSwagger();

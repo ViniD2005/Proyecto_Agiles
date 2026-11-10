@@ -60,3 +60,34 @@ public record MoodleModule(
     [property: JsonPropertyName("instance")] int Instance,
     [property: JsonPropertyName("modname")] string ModName,
     [property: JsonPropertyName("visible")] int? Visible);
+
+// ---------------- Sprint 2: calificaciones y entregas (solo lectura) ----------------
+public record MoodleGradeItem(
+    [property: JsonPropertyName("id")] int Id,
+    [property: JsonPropertyName("itemname")] string? ItemName,
+    [property: JsonPropertyName("itemtype")] string? ItemType,
+    [property: JsonPropertyName("itemmodule")] string? ItemModule,
+    [property: JsonPropertyName("iteminstance")] int? ItemInstance,
+    [property: JsonPropertyName("cmid")] int? CmId,
+    [property: JsonPropertyName("graderaw")] decimal? GradeRaw,
+    [property: JsonPropertyName("grademax")] decimal? GradeMax,
+    [property: JsonPropertyName("gradeformatted")] string? GradeFormatted);
+
+public record MoodleUserGrades(
+    [property: JsonPropertyName("userid")] int UserId,
+    [property: JsonPropertyName("gradeitems")] List<MoodleGradeItem>? GradeItems);
+
+public record MoodleUserGradesResponse(
+    [property: JsonPropertyName("usergrades")] List<MoodleUserGrades>? UserGrades);
+
+public record MoodleSubmission(
+    [property: JsonPropertyName("id")] int Id,
+    [property: JsonPropertyName("userid")] int UserId,
+    [property: JsonPropertyName("status")] string? Status);
+
+public record MoodleAssignSubmissions(
+    [property: JsonPropertyName("assignmentid")] int AssignmentId,
+    [property: JsonPropertyName("submissions")] List<MoodleSubmission>? Submissions);
+
+public record MoodleSubmissionsResponse(
+    [property: JsonPropertyName("assignments")] List<MoodleAssignSubmissions>? Assignments);
