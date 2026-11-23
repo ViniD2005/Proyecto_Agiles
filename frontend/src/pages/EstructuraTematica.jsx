@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { estructuraApi } from '../api/sprint2'
 import Modal from '../components/Modal'
+import SilaboPropuesta from '../components/SilaboPropuesta'
 import SelectorMateria, { useMateriaSeleccionada } from '../components/SelectorMateria'
 import '../styles-sprint2.css'
 
@@ -111,6 +112,13 @@ export default function EstructuraTematica() {
                   <button className="btn-secundario" onClick={() => setImportar(null)}>Cancelar</button>
                 </div>
               </>}
+        </div>
+      )}
+
+      {arbol && materia && (
+        <div className="panel">
+          <SilaboPropuesta materiaId={materia.id} yaTieneEstructura={arbol.unidades.length > 0}
+                           onImportada={() => { setMensaje({ tipo: 'ok', texto: 'Estructura importada desde el sílabo.' }); cargar() }} />
         </div>
       )}
 

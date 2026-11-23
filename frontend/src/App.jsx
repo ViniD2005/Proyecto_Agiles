@@ -9,7 +9,9 @@ import MapeoActividades from './pages/MapeoActividades'
 import DashboardCurso from './pages/DashboardCurso'
 import MapaCalor from './pages/MapaCalor'
 import FichaEstudiante from './pages/FichaEstudiante'
-import Proximamente from './pages/Proximamente'
+import AgenteIA from './pages/AgenteIA'
+import ReporteCurso from './pages/ReporteCurso'
+import Auditoria from './pages/Auditoria'
 import AdminInicio from './pages/AdminInicio'
 import { ROLES, useAuth } from './auth/AuthContext'
 
@@ -38,14 +40,14 @@ export default function App() {
         <Route path="/dashboard/ficha/:estudianteId" element={<FichaEstudiante />} />
 
         {/* Sprint 3 */}
-        <Route path="/agente" element={<Proximamente titulo="Agente IA" sprint={3} historia="HU-13 / HU-14" />} />
-        <Route path="/reportes" element={<Proximamente titulo="Reportes" sprint={3} historia="HU-16" />} />
+        <Route path="/agente" element={<AgenteIA />} />
+        <Route path="/reportes" element={<ReporteCurso />} />
       </Route>
 
       {/* Rutas del administrador técnico */}
       <Route element={<ProtectedRoute roles={[ROLES.ADMIN]}><Layout /></ProtectedRoute>}>
         <Route path="/admin" element={<AdminInicio />} />
-        <Route path="/auditoria" element={<Proximamente titulo="Auditoría" sprint={3} historia="HU-17" />} />
+        <Route path="/auditoria" element={<Auditoria />} />
       </Route>
 
       <Route path="/sin-permiso" element={<div className="centrado"><h2>Acceso denegado</h2><p>Tu rol no tiene permiso para abrir esta página.</p><a href="/">Volver al inicio</a></div>} />
