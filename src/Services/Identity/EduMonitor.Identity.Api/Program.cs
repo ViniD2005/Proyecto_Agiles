@@ -18,6 +18,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<AuditoriaService>(); // Sprint 3 · HU-17
 builder.Services.AddHealthChecks().AddDbContextCheck<IdentityDbContext>("sqlserver");
 
 var app = builder.Build();

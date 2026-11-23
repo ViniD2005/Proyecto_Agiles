@@ -66,6 +66,10 @@ public class AnaliticaService(AnalyticsDbContext db, RecalculoService recalculo)
 
     private static AlertaDto ADto(AlertaRiesgo a) => new(a.Tipo, a.Regla, a.Evidencia, a.Actividad, a.Valor);
 
+    private static TendenciaDto ATendenciaDto(ResultadoTendencia t) => new(
+        t.Disponible, t.Mensaje, t.Puntos, t.Pendiente, t.R2, t.Direccion, t.Proyeccion, t.AlertaTemprana, t.MensajeAlerta,
+        t.Linea, CalculadoraTendencia.Aviso);
+
     // ============================================================ HU-10 indicadores
     public async Task<Resultado<IndicadoresDto>> ObtenerIndicadoresAsync(int materiaId, string? email, CancellationToken ct = default)
     {
@@ -264,6 +268,7 @@ public class AnaliticaService(AnalyticsDbContext db, RecalculoService recalculo)
         return Resultado<FichaEstudianteDto>.Ok(new FichaEstudianteDto(
             materiaId, d.Materia.Nombre, estudianteId, Nombre(est), ind?.NotaPonderada, ind?.NotaAcumulada ?? 0m, ind?.PesoEvaluado ?? 0m,
             ind?.Nivel ?? nameof(NivelRiesgo.SinDatos), d.Umbrales, filasActividad, evolucion, temasFicha,
-            d.Alertas.Where(a => a.EstudianteId == estudianteId).Select(ADto).ToList(), AvisoOrientativo));
+            d.Alertas.Where(a => a.EstudianteId == estudianteId).Select(ADto).ToList(), AvisoOrientativo,
+            ATendenciaDto(CalculadoraTendencia.Calcular(evolucion.Select(e => e.Nota).ToList(), critico, aprobado))));
     }
 }

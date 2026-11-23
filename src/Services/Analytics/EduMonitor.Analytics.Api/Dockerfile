@@ -9,6 +9,10 @@ COPY src/Services/Analytics/ src/Services/Analytics/
 RUN dotnet publish src/Services/Analytics/EduMonitor.Analytics.Api/EduMonitor.Analytics.Api.csproj -c Release -o /app/publish --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
+# QuestPDF (reporte PDF, HU-16) necesita fuentes y FreeType en la imagen runtime
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libfontconfig1 libfreetype6 fonts-dejavu-core \
+ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/publish .
 EXPOSE 8080
