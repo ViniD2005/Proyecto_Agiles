@@ -78,6 +78,8 @@ postman/                             Colección de pruebas del Sprint 1
 docs/GUIA_MOODLE.md                  Paso a paso de Moodle y servicios web
 ```
 
+> **¿Vas a instalarlo por primera vez en tu equipo?** Sigue la guía completa paso a paso: **[`docs/GUIA_INSTALACION.md`](docs/GUIA_INSTALACION.md)** (Windows, Docker, datos de Moodle, modelo de IA y problemas frecuentes).
+
 ## Puesta en marcha (un solo comando)
 
 Requisitos: Docker Desktop (8 GB de RAM asignados recomendado), Git. Para desarrollo local: .NET 8 SDK y Node 20.
