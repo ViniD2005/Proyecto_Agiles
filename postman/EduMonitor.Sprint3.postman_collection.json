@@ -1,0 +1,1458 @@
+{
+  "info": {
+    "name": "EduMonitor AI - Sprint 3",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Pruebas de API del Sprint 3 (HU-13 a HU-21). Orden: Login docente1 → Agente → Recomendaciones → Reporte → Tendencia → Correo → Sílabo → Auditoría (admin) → Permisos. Ajustar materia_id (id de Programación Web en EduMonitor). Requiere haber sincronizado las calificaciones (Sprint 2)."
+  },
+  "item": [
+    {
+      "name": "0 · Autenticación",
+      "item": [
+        {
+          "name": "Login docente1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway}}/api/auth/login",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"docente1@uta.edu.ec\", \"password\": \"{{password}}\"}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-13/14 · Agente IA",
+      "item": [
+        {
+          "name": "Estado del agente (proveedor, modelo, herramientas)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/agente/estado",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "agente",
+                "estado"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const e=pm.response.json(); pm.test('lista 6 herramientas', () => pm.expect(e.herramientas.length).to.eql(6));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consulta: estudiantes en riesgo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway}}/api/agente/chat",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "agente",
+                "chat"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"materiaId\": \"{{materia_id}}\", \"pregunta\": \"¿Qué estudiantes están en riesgo y por qué?\"}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const r=pm.response.json();",
+                  "pm.test('usa al menos 4 herramientas', () => pm.expect(r.herramientas.length).to.be.at.least(4));",
+                  "pm.test('separa hechos de inferencias', () => { pm.expect(r.hechos).to.be.an('array'); pm.expect(r.inferencias).to.be.an('array'); pm.expect(r.incertidumbre).to.be.an('array'); });",
+                  "pm.test('no expone códigos sin resolver', () => pm.expect(JSON.stringify(r)).to.not.include('{est:'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consulta: ficha de un estudiante (por nombre)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway}}/api/agente/chat",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "agente",
+                "chat"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"materiaId\": \"{{materia_id}}\", \"pregunta\": \"¿Cómo va Joel Herrera?\"}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('incluye la ficha', () => pm.expect(pm.response.json().herramientas.map(h=>h.herramienta)).to.include('obtener_ficha_estudiante'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consulta fuera del tema del curso (respuesta honesta)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway}}/api/agente/chat",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "agente",
+                "chat"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"materiaId\": \"{{materia_id}}\", \"pregunta\": \"¿Quién ganó el mundial de fútbol?\"}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consulta vacía (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway}}/api/agente/chat",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "agente",
+                "chat"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"materiaId\": \"{{materia_id}}\", \"pregunta\": \"  \"}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-15 · Recomendaciones",
+      "item": [
+        {
+          "name": "Listar estudiantes con su estado de recomendación",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/recomendaciones",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "recomendaciones"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const l=pm.response.json().estudiantes; if(l.length){pm.collectionVariables.set('estudiante_id', l[0].estudianteId);}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Generar recomendación",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/recomendaciones/{{estudiante_id}}/generar",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "recomendaciones",
+                "{{estudiante_id}}",
+                "generar"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const r=pm.response.json();",
+                  "pm.test('queda en borrador', () => pm.expect(r.estado).to.eql('Borrador'));",
+                  "pm.test('trae evidencia', () => pm.expect(r.evidencia.length).to.be.above(0));",
+                  "pm.test('trae actividades de refuerzo', () => pm.expect(r.contenido.actividadesRefuerzo.length).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar (vuelve a borrador)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/recomendaciones/{{estudiante_id}}",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "recomendaciones",
+                "{{estudiante_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"falencias\": null, \"actividadesRefuerzo\": [\"Tutoría individual esta semana\", \"Resolver 5 ejercicios guiados\"], \"contenidosARepasar\": null, \"observacion\": \"Editada por el docente\"}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('registra al editor', () => pm.expect(pm.response.json().editadaPor).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enviar sin aprobar (409)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/recomendaciones/{{estudiante_id}}/enviar",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "recomendaciones",
+                "{{estudiante_id}}",
+                "enviar"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "HU-20: solo se envía una recomendación aprobada."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Aprobar",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/recomendaciones/{{estudiante_id}}/aprobar",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "recomendaciones",
+                "{{estudiante_id}}",
+                "aprobar"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('aprobada', () => pm.expect(pm.response.json().estado).to.eql('Aprobada'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Regenerar una aprobada (409)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/recomendaciones/{{estudiante_id}}/generar",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "recomendaciones",
+                "{{estudiante_id}}",
+                "generar"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-16 · Reporte del curso",
+      "item": [
+        {
+          "name": "Generar reporte",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/reporte",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "reporte"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('reporte_id', pm.response.json().reporteId);",
+                  "pm.test('incluye el aviso de orientativo', () => pm.expect(pm.response.json().aviso).to.include('orientativas'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Último reporte (vista previa)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/reporte",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "reporte"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Descargar PDF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/reportes/{{reporte_id}}/pdf",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "reportes",
+                "{{reporte_id}}",
+                "pdf"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('es PDF', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-19 · Tendencia (opcional)",
+      "item": [
+        {
+          "name": "Ficha con tendencia y proyección",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/fichas/{{estudiante_id}}",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "fichas",
+                "{{estudiante_id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const t=pm.response.json().tendencia;",
+                  "pm.test('trae tendencia y aviso', () => { pm.expect(t).to.be.an('object'); pm.expect(t.aviso).to.include('estimación'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-20 · Correo (opcional)",
+      "item": [
+        {
+          "name": "Enviar recomendación aprobada (Mailpit en :8025)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/recomendaciones/{{estudiante_id}}/enviar",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "recomendaciones",
+                "{{estudiante_id}}",
+                "enviar"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Requiere la recomendación aprobada (carpeta HU-15) y el perfil «correo» de Docker (Mailpit). Si SMTP no está disponible responde 503 con un mensaje claro."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('indica destino', () => pm.expect(pm.response.json().enviadaA).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-21 · Sílabo en PDF (opcional)",
+      "item": [
+        {
+          "name": "Proponer estructura desde el PDF",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/silabo/propuesta",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "silabo",
+                "propuesta"
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "archivo",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "En Postman: elegir el PDF en el campo «archivo». No guarda nada; se confirma con POST …/estructura/importar."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const p=pm.response.json();",
+                  "pm.test('devuelve unidades', () => pm.expect(p.unidades.length).to.be.above(0));",
+                  "pm.test('indica la fuente', () => pm.expect(['Modelo','Patrones']).to.include(p.fuente));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HU-17 · Auditoría (administrador)",
+      "item": [
+        {
+          "name": "Login administrador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway}}/api/auth/login",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"admin@edumonitor.local\", \"password\": \"{{password}}\"}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar bitácora (paginada)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/auditoria?page=1&pageSize=10",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "auditoria"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('trae items y total', () => { const d=pm.response.json(); pm.expect(d.items).to.be.an('array'); pm.expect(d.total).to.be.a('number'); });",
+                  "pm.test('sin tokens ni contraseñas', () => pm.expect(pm.response.text()).to.not.match(/eyJ[A-Za-z0-9_-]{10,}\\./));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtrar por acción",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/auditoria?accion=AGENTE_CONSULTA",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "auditoria"
+              ],
+              "query": [
+                {
+                  "key": "accion",
+                  "value": "AGENTE_CONSULTA"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtrar por origen y fechas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/auditoria?origen=MS-C&desde=2026-01-01",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "auditoria"
+              ],
+              "query": [
+                {
+                  "key": "origen",
+                  "value": "MS-C"
+                },
+                {
+                  "key": "desde",
+                  "value": "2026-01-01"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Acciones disponibles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/auditoria/acciones",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "auditoria",
+                "acciones"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST directo a /api/auditoria por el Gateway (405: no hay escritura pública)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway}}/api/auditoria",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "auditoria"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"accion\": \"X\", \"servicio\": \"MS-C\"}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('no se puede escribir desde fuera', () => pm.expect([404,405]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Permisos (RN-07)",
+      "item": [
+        {
+          "name": "Login docente2 (sin materias)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway}}/api/auth/login",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"docente2@uta.edu.ec\", \"password\": \"{{password}}\"}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "docente2 consulta al agente por la materia de docente1 (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway}}/api/agente/chat",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "agente",
+                "chat"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"materiaId\": \"{{materia_id}}\", \"pregunta\": \"¿Cómo va el curso?\"}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "docente2 lee las recomendaciones de docente1 (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/recomendaciones",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "recomendaciones"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "docente2 genera el reporte de docente1 (403)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/materias/{{materia_id}}/reporte",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "materias",
+                "{{materia_id}}",
+                "reporte"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "docente2 consulta la auditoría (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gateway}}/api/auditoria",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "auditoria"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login administrador (de nuevo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway}}/api/auth/login",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"admin@edumonitor.local\", \"password\": \"{{password}}\"}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "El administrador no usa el agente (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway}}/api/agente/chat",
+              "host": [
+                "{{gateway}}"
+              ],
+              "path": [
+                "api",
+                "agente",
+                "chat"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"materiaId\": \"{{materia_id}}\", \"pregunta\": \"hola\"}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "gateway",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "password",
+      "value": "Docente#2026"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "materia_id",
+      "value": "2"
+    },
+    {
+      "key": "estudiante_id",
+      "value": ""
+    },
+    {
+      "key": "reporte_id",
+      "value": ""
+    }
+  ]
+}

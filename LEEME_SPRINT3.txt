@@ -1,0 +1,40 @@
+EDUMONITOR AI - PAQUETE DEL SPRINT 3 (+ opcionales HU-19, HU-20, HU-21)
+======================================================================
+Contiene solo lo del Sprint 3 (archivos nuevos y modificados). Descomprimir EN LA RAIZ del repositorio.
+
+ARCHIVOS MODIFICADOS (22) - NO sobrescribir a ciegas: comparar con "git diff" y fusionar si ya los editaron
+  .env.example
+  README.md
+  docker-compose.yml            <- si cambiaron puertos (p. ej. frontend 5174:80), conserven su cambio
+  frontend/src/App.jsx
+  frontend/src/api/client.js
+  frontend/src/pages/AdminInicio.jsx
+  frontend/src/pages/EstructuraTematica.jsx
+  frontend/src/pages/FichaEstudiante.jsx
+  src/Gateway/EduMonitor.Gateway/appsettings.json
+  src/Services/Academic/EduMonitor.Academic.Api/Controllers/EstructuraController.cs
+  src/Services/Academic/EduMonitor.Academic.Api/Controllers/MateriasController.cs
+  src/Services/Academic/EduMonitor.Academic.Api/Program.cs
+  src/Services/Academic/EduMonitor.Academic.Api/appsettings.json
+  src/Services/Analytics/EduMonitor.Analytics.Api/Contracts/Sprint2Dtos.cs
+  src/Services/Analytics/EduMonitor.Analytics.Api/Data/AnalyticsDbContext.cs
+  src/Services/Analytics/EduMonitor.Analytics.Api/Dockerfile
+  src/Services/Analytics/EduMonitor.Analytics.Api/EduMonitor.Analytics.Api.csproj
+  src/Services/Analytics/EduMonitor.Analytics.Api/Program.cs
+  src/Services/Analytics/EduMonitor.Analytics.Api/Services/AnaliticaService.cs
+  src/Services/Analytics/EduMonitor.Analytics.Api/appsettings.json
+  src/Services/Identity/EduMonitor.Identity.Api/Controllers/AuditoriaController.cs
+  src/Services/Identity/EduMonitor.Identity.Api/Program.cs
+
+TODO LO DEMAS ES NUEVO. Guia completa: docs/SPRINT3.md
+
+PASOS RESUMIDOS
+1) git checkout develop ; git pull ; git checkout -b feature/sprint-3
+2) Descomprimir el zip en la raiz ; git status ; git diff
+3) .\scripts\agregar-variables-sprint3.ps1        (agrega las variables nuevas a su .env)
+4) dotnet build EduMonitor.sln ; dotnet test EduMonitor.sln   (esperado: 149 pruebas correctas)
+5) dotnet ef migrations add Sprint3_AgenteRecomendacionesReportes --project src/Services/Analytics/EduMonitor.Analytics.Api
+6) ollama pull qwen2.5:3b   (o:  docker compose --profile ia up -d)
+7) docker compose --profile correo up -d --build
+
+Si algo falla, copie el mensaje completo y se corrige.
