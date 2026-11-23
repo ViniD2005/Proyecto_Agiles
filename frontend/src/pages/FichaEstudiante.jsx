@@ -4,6 +4,7 @@ import { analiticaApi } from '../api/sprint2'
 import { EstadoNotaBadge, NivelBadge } from '../components/Badges'
 import { fmt, TIPOS } from '../components/formato'
 import '../styles-sprint2.css'
+import '../styles-sprint3.css'
 
 function Evolucion({ puntos }) {
   if (puntos.length < 2) return <p className="muted">Se necesitan al menos 2 notas evaluadas para mostrar la evolución.</p>
@@ -20,6 +21,30 @@ function Evolucion({ puntos }) {
           <title>{`${d.actividad}: ${fmt(d.nota)}`}</title></g>
       ))}
     </svg>
+  )
+}
+
+/** HU-19 (opcional): línea de tendencia sobre las notas evaluadas y proyección de la siguiente nota. */
+function Tendencia({ t }) {
+  if (!t) return null
+  if (!t.disponible) return <p className="muted">{t.mensaje}</p>
+  const n = t.linea.length            // n-1 notas ajustadas + 1 punto de proyección
+  const w = 360, h = 120, p = 18
+  const x = (i) => p + (i * (w - 2 * p)) / (n - 1)
+  const y = (v) => h - p - (v / 10) * (h - 2 * p)
+  const ajustada = t.linea.slice(0, n - 1)
+  return (
+    <div className="tendencia">
+      <svg viewBox={`0 0 ${w} ${h}`} className="evolucion" role="img" aria-label="Tendencia de las notas y proyección">
+        <line x1={p} y1={y(7)} x2={w - p} y2={y(7)} stroke="#bbf7d0" strokeDasharray="4 3" />
+        <polyline fill="none" stroke="#94a3b8" strokeWidth="2" points={ajustada.map((v, i) => `${x(i)},${y(v)}`).join(' ')} />
+        <line x1={x(n - 2)} y1={y(t.linea[n - 2])} x2={x(n - 1)} y2={y(t.linea[n - 1])} stroke="#f59e0b" strokeWidth="2" strokeDasharray="5 4" />
+        <circle cx={x(n - 1)} cy={y(t.linea[n - 1])} r="4" fill="#f59e0b"><title>{`Proyección: ${fmt(t.proyeccion)}`}</title></circle>
+      </svg>
+      <p>{t.mensaje}</p>
+      {t.alertaTemprana && <div className="alerta aviso">{t.mensajeAlerta}</div>}
+      <p className="muted"><em>{t.aviso}</em></p>
+    </div>
   )
 }
 
@@ -91,6 +116,8 @@ export default function FichaEstudiante() {
           ))}
           <h3 className="sub">Evolución de las notas</h3>
           <Evolucion puntos={ficha.evolucion} />
+          <h3 className="sub">Tendencia y proyección</h3>
+          <Tendencia t={ficha.tendencia} />
         </section>
       </div>
 

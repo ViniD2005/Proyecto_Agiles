@@ -3,6 +3,7 @@ using EduMonitor.Academic.Api.Data;
 using EduMonitor.Academic.Api.Domain;
 using EduMonitor.Academic.Api.Services;
 using EduMonitor.Common;
+using EduMonitor.Common.Auditoria;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +29,7 @@ public class MateriasController(AcademicDbContext db, ISyncService sync) : Contr
 
     /// <summary>Sincroniza desde Moodle las materias asignadas al docente (y su detalle).</summary>
     [HttpPost("sincronizar")]
+    [AuditarAccion("SINCRONIZACION_MATERIAS", "MS-B")]
     public async Task<ActionResult<ResultadoSincronizacion>> SincronizarMaterias(CancellationToken ct)
     {
         var r = await sync.SincronizarMateriasAsync(Email, ct);
@@ -46,6 +48,7 @@ public class MateriasController(AcademicDbContext db, ISyncService sync) : Contr
 
     /// <summary>Sincroniza estudiantes y actividades de una materia (HU-06).</summary>
     [HttpPost("{id:int}/sincronizar")]
+    [AuditarAccion("SINCRONIZACION_MATERIA", "MS-B")]
     public async Task<ActionResult<ResultadoSincronizacion>> SincronizarMateria(int id, CancellationToken ct)
     {
         var m = await db.Materias.FirstOrDefaultAsync(x => x.Id == id, ct);

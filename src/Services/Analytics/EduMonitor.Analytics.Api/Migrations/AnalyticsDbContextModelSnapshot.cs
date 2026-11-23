@@ -124,6 +124,57 @@ namespace EduMonitor.Analytics.Api.Migrations
                     b.ToTable("Calificaciones", (string)null);
                 });
 
+            modelBuilder.Entity("EduMonitor.Analytics.Api.Domain.ConsultaAgente", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("DocenteEmail")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<int>("DuracionMs")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("FechaUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Intencion")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("MateriaId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Modelo")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("ModeloDisponible")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Pregunta")
+                        .IsRequired()
+                        .HasMaxLength(600)
+                        .HasColumnType("nvarchar(600)");
+
+                    b.Property<string>("Resultado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MateriaId", "FechaUtc");
+
+                    b.ToTable("ConsultasAgente", (string)null);
+                });
+
             modelBuilder.Entity("EduMonitor.Analytics.Api.Domain.ContenidoAnalitico", b =>
                 {
                     b.Property<int>("MateriaId")
@@ -204,6 +255,48 @@ namespace EduMonitor.Analytics.Api.Migrations
                     b.ToTable("Indicadores", (string)null);
                 });
 
+            modelBuilder.Entity("EduMonitor.Analytics.Api.Domain.InvocacionHerramienta", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("ConsultaId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("DuracionMs")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Exito")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("FechaUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Herramienta")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("Parametros")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Resumen")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConsultaId");
+
+                    b.ToTable("InvocacionesHerramienta", (string)null);
+                });
+
             modelBuilder.Entity("EduMonitor.Analytics.Api.Domain.MapeoAnalitico", b =>
                 {
                     b.Property<int>("MateriaId")
@@ -246,6 +339,114 @@ namespace EduMonitor.Analytics.Api.Migrations
                     b.HasIndex("DocenteEmail");
 
                     b.ToTable("Materias", (string)null);
+                });
+
+            modelBuilder.Entity("EduMonitor.Analytics.Api.Domain.RecomendacionEstudiante", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AprobadaPor")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime?>("AprobadaUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Contenido")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EditadaPor")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime?>("EditadaUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EnviadaA")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime?>("EnviadaUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("nvarchar(15)");
+
+                    b.Property<int>("EstudianteId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Evidencia")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Fuente")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("nvarchar(15)");
+
+                    b.Property<string>("GeneradaPor")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("GeneradaUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MateriaId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Nivel")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("nvarchar(15)");
+
+                    b.Property<decimal?>("NotaPonderada")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MateriaId", "EstudianteId")
+                        .IsUnique();
+
+                    b.ToTable("Recomendaciones", (string)null);
+                });
+
+            modelBuilder.Entity("EduMonitor.Analytics.Api.Domain.ReporteCurso", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Contenido")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("GeneradoPor")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("GeneradoUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MateriaId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MateriaId", "GeneradoUtc");
+
+                    b.ToTable("ReportesCurso", (string)null);
                 });
 
             modelBuilder.Entity("EduMonitor.Analytics.Api.Domain.TemaAnalitico", b =>

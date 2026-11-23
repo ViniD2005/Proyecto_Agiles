@@ -10,6 +10,10 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="8.0.8" />
+    <PackageReference Include="PdfPig" Version="0.1.16" />
+    <!-- Sprint 3: reporte PDF (HU-16), correo SMTP (HU-20) y lectura del sílabo en PDF (HU-21) -->
+    <PackageReference Include="QuestPDF" Version="2024.7.3" />
+    <PackageReference Include="MailKit" Version="4.*" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\EduMonitor.Common\EduMonitor.Common.csproj" />

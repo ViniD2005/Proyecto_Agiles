@@ -1,4 +1,4 @@
-﻿# EduMonitor AI - entorno completo (HU-03)
+# EduMonitor AI - entorno completo (HU-03)
 # Uso:  cp .env.example .env   &&   docker compose up -d --build
 name: edumonitor
 
@@ -34,7 +34,7 @@ services:
       retries: 10
 
   # ---------------- Moodle de prueba (HU-01) ----------------
-  # Nota: Bitnami moviÃ³ sus imÃ¡genes gratuitas a "bitnamilegacy". Si el pull falla,
+  # Nota: Bitnami movió sus imágenes gratuitas a "bitnamilegacy". Si el pull falla,
   # revisar docs/GUIA_MOODLE.md -> "Imagen alternativa".
   mariadb:
     image: bitnamilegacy/mariadb:11.4
@@ -69,6 +69,23 @@ services:
       - moodle_data:/bitnami/moodle
       - moodledata_data:/bitnami/moodledata
 
+  # ---------------- Sprint 3: IA local y correo de pruebas (opcionales por perfil) ----------------
+  # Ollama dentro de Docker:  docker compose --profile ia up -d   y en .env  LLM_BASE_URL=http://ollama:11434
+  # (si Ollama ya está instalado en el equipo no hace falta este perfil; el valor por defecto apunta al equipo)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: em-ollama
+    profiles: ["ia"]
+    ports: ["11434:11434"]
+    volumes: [ollama_data:/root/.ollama]
+
+  # Bandeja de correo de pruebas (HU-20):  docker compose --profile correo up -d   →  http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: em-mailpit
+    profiles: ["correo"]
+    ports: ["8025:8025", "1025:1025"]
+
   # ---------------- Microservicios .NET 8 ----------------
   identity-api:   # MS-A Identidad y Auditoria
     build:
@@ -96,6 +113,7 @@ services:
     depends_on:
       sqlserver: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
+      identity-api: { condition: service_started }
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
@@ -105,12 +123,13 @@ services:
       ConnectionStrings__Default: Server=sqlserver,1433;Database=DB_Academico;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
       Moodle__BaseUrl: http://moodle:8080
       Moodle__Token: ${MOODLE_TOKEN}
+      Audit__IdentityUrl: http://identity-api:8080/
       RabbitMq__Host: rabbitmq
       RabbitMq__User: ${RABBITMQ_USER}
       RabbitMq__Password: ${RABBITMQ_PASSWORD}
     ports: ["5002:8080"]
 
-  analytics-api:  # MS-C Analitica y Agente IA (esqueleto en Sprint 1)
+  analytics-api:  # MS-C Analitica, Agente IA, recomendaciones y reportes
     build:
       context: .
       dockerfile: src/Services/Analytics/EduMonitor.Analytics.Api/Dockerfile
@@ -118,6 +137,7 @@ services:
     depends_on:
       sqlserver: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
+      identity-api: { condition: service_started }
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
@@ -128,6 +148,23 @@ services:
       RabbitMq__Host: rabbitmq
       RabbitMq__User: ${RABBITMQ_USER}
       RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      # Sprint 3: auditoría, contacto del estudiante (MS-B), agente de IA, correo y reportes
+      Audit__IdentityUrl: http://identity-api:8080/
+      Academic__BaseUrl: http://academic-api:8080/
+      Llm__Provider: ${LLM_PROVIDER:-Ollama}
+      Llm__Model: ${LLM_MODEL:-qwen2.5:3b}
+      Llm__BaseUrl: ${LLM_BASE_URL:-http://host.docker.internal:11434}
+      Llm__ApiKey: ${LLM_API_KEY:-}
+      Llm__TimeoutSeconds: ${LLM_TIMEOUT_SECONDS:-120}
+      Smtp__Host: ${SMTP_HOST:-mailpit}
+      Smtp__Port: ${SMTP_PORT:-1025}
+      Smtp__User: ${SMTP_USER:-}
+      Smtp__Password: ${SMTP_PASSWORD:-}
+      Smtp__From: ${SMTP_FROM:-no-reply@edumonitor.local}
+      Smtp__UseStartTls: ${SMTP_STARTTLS:-false}
+      Reportes__Periodo: ${REPORTE_PERIODO:-Primer parcial}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # Ollama instalado en el equipo (Windows/Mac/Linux)
     ports: ["5003:8080"]
 
   gateway:        # API Gateway (YARP)
@@ -137,7 +174,6 @@ services:
     container_name: em-gateway
     depends_on: [identity-api, academic-api, analytics-api]
     environment:
-      Cors__Origins__0: http://localhost:5174
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       Jwt__Key: ${JWT_KEY}
@@ -146,6 +182,9 @@ services:
       ReverseProxy__Clusters__identity__Destinations__d1__Address: http://identity-api:8080/
       ReverseProxy__Clusters__academic__Destinations__d1__Address: http://academic-api:8080/
       ReverseProxy__Clusters__analytics__Destinations__d1__Address: http://analytics-api:8080/
+      ReverseProxy__Clusters__analytics__HttpRequest__ActivityTimeout: "00:04:00"
+      Cors__Origins__0: http://localhost:5174
+      Cors__Origins__1: http://localhost:5173
     ports: ["5000:8080"]
 
   # ---------------- Frontend React ----------------
@@ -163,3 +202,4 @@ volumes:
   mariadb_data:
   moodle_data:
   moodledata_data:
+  ollama_data:

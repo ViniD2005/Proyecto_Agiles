@@ -17,13 +17,14 @@ export class ApiError extends Error {
 }
 
 export async function api(path, { method = 'GET', body, auth = true } = {}) {
-  const headers = { 'Content-Type': 'application/json' }
+  const esFormulario = typeof FormData !== 'undefined' && body instanceof FormData   // multipart: el navegador pone el Content-Type
+  const headers = esFormulario ? {} : { 'Content-Type': 'application/json' }
   const token = tokenStore.get()
   if (auth && token) headers.Authorization = `Bearer ${token}`
 
   let res
   try {
-    res = await fetch(`${API_URL}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined })
+    res = await fetch(`${API_URL}${path}`, { method, headers, body: body ? (esFormulario ? body : JSON.stringify(body)) : undefined })
   } catch {
     throw new ApiError(0, 'No se pudo conectar con el servidor. Verifica que el API Gateway esté en ejecución.')
   }
@@ -34,13 +35,37 @@ export async function api(path, { method = 'GET', body, auth = true } = {}) {
   }
 
   const text = await res.text()
-  const data = text ? JSON.parse(text) : null
+  let data = null
+  if (text) { try { data = JSON.parse(text) } catch { data = null } }
   if (!res.ok) {
     const msg = data?.detail || data?.mensaje || data?.title ||
       (res.status === 403 ? 'No tienes permiso sobre este recurso.' : `Error ${res.status}`)
     throw new ApiError(res.status, msg, data)
   }
   return data
+}
+
+/** Descarga un archivo binario (PDF) con el JWT; devuelve { blob, nombre }. */
+export async function apiBlob(path) {
+  const token = tokenStore.get()
+  let res
+  try {
+    res = await fetch(`${API_URL}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  } catch {
+    throw new ApiError(0, 'No se pudo conectar con el servidor. Verifica que el API Gateway esté en ejecución.')
+  }
+  if (res.status === 401) {
+    tokenStore.clear()
+    window.dispatchEvent(new Event('edumonitor:sesion-expirada'))
+  }
+  if (!res.ok) {
+    let detalle = null
+    try { detalle = (await res.json())?.detail } catch { /* sin cuerpo JSON */ }
+    throw new ApiError(res.status, detalle || (res.status === 403 ? 'No tienes permiso sobre este recurso.' : `Error ${res.status}`))
+  }
+  const cab = res.headers.get('Content-Disposition') || ''
+  const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(cab)
+  return { blob: await res.blob(), nombre: m ? decodeURIComponent(m[1]) : 'reporte.pdf' }
 }
 
 export const authApi = {

@@ -1,6 +1,7 @@
 using EduMonitor.Academic.Api.Contracts;
 using EduMonitor.Academic.Api.Data;
 using EduMonitor.Academic.Api.Services;
+using EduMonitor.Common.Auditoria;
 using EduMonitor.Common.Results;
 using Microsoft.AspNetCore.Mvc;
 
@@ -48,6 +49,7 @@ public class EstructuraController(AcademicDbContext db, EstructuraService servic
 
     /// <summary>Carga la estructura completa del sílabo (solo si la materia aún no tiene estructura).</summary>
     [HttpPost("importar")]
+    [AuditarAccion("ESTRUCTURA_IMPORTADA", "MS-B")]
     public async Task<IActionResult> Importar(int materiaId, [FromBody] ImportarEstructuraRequest request, CancellationToken ct)
     {
         var (_, error) = await MateriaAutorizadaAsync(materiaId, ct);

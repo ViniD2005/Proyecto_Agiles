@@ -43,4 +43,5 @@ public record TemaFichaDto(int TemaId, string Tema, string Unidad, decimal? Nota
 public record FichaEstudianteDto(
     int MateriaId, string Materia, int EstudianteId, string Nombre, decimal? NotaPonderada, decimal NotaAcumulada,
     decimal PesoEvaluado, string Nivel, UmbralesDto Umbrales, IReadOnlyList<ActividadFichaDto> Actividades,
-    IReadOnlyList<EvolucionDto> Evolucion, IReadOnlyList<TemaFichaDto> Temas, IReadOnlyList<AlertaDto> Alertas, string Aviso);
+    IReadOnlyList<EvolucionDto> Evolucion, IReadOnlyList<TemaFichaDto> Temas, IReadOnlyList<AlertaDto> Alertas, string Aviso,
+    TendenciaDto Tendencia);   // Sprint 3 · HU-19

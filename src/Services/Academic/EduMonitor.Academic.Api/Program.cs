@@ -2,6 +2,7 @@ using EduMonitor.Academic.Api.Data;
 using EduMonitor.Academic.Api.Moodle;
 using EduMonitor.Academic.Api.Services;
 using EduMonitor.Common;
+using EduMonitor.Common.Auditoria;
 using EduMonitor.Common.Messaging;
 using EduMonitor.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,7 @@ builder.Services.AddScoped<EstructuraService>();
 builder.Services.AddScoped<MapeoService>();
 
 builder.Services.AddEduMonitorAuth(builder.Configuration);
+builder.Services.AddEduMonitorAudit(builder.Configuration); // Sprint 3 · HU-17
 builder.Services.AddEduMonitorSwagger("MS-B · Académico (Moodle)");
 builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));

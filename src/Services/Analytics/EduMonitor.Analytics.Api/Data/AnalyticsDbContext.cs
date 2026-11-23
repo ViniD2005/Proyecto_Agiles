@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EduMonitor.Analytics.Api.Data;
 
-/// <summary>DB_Analitica. Sprint 2: modelo de lectura, indicadores y alertas. Recomendaciones y reportes llegan en el Sprint 3.</summary>
+/// <summary>DB_Analitica. Sprint 2: modelo de lectura, indicadores y alertas. Sprint 3: agente, recomendaciones y reportes (ver Sprint3Model).</summary>
 public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options) : DbContext(options)
 {
     public DbSet<MateriaAnalitica> Materias => Set<MateriaAnalitica>();
@@ -17,6 +17,12 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options) : 
     public DbSet<UmbralMateria> Umbrales => Set<UmbralMateria>();
     public DbSet<IndicadorEstudiante> Indicadores => Set<IndicadorEstudiante>();
     public DbSet<AlertaRiesgo> Alertas => Set<AlertaRiesgo>();
+
+    // Sprint 3: agente, recomendaciones y reportes
+    public DbSet<ConsultaAgente> ConsultasAgente => Set<ConsultaAgente>();
+    public DbSet<InvocacionHerramienta> InvocacionesHerramienta => Set<InvocacionHerramienta>();
+    public DbSet<RecomendacionEstudiante> Recomendaciones => Set<RecomendacionEstudiante>();
+    public DbSet<ReporteCurso> Reportes => Set<ReporteCurso>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -112,5 +118,7 @@ public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options) : 
             e.Property(x => x.Actividad).HasMaxLength(255);
             e.Property(x => x.Valor).HasPrecision(6, 2);
         });
+
+        Sprint3Model.Configurar(b);
     }
 }
