@@ -73,7 +73,7 @@ public sealed class OllamaProvider(HttpClient http, IOptions<LlmOptions> options
             ["model"] = Opciones.Model,
             ["messages"] = Mensajes(s),
             ["stream"] = false,
-            ["keep_alive"] = "10m",
+            ["keep_alive"] = "30m",
             ["options"] = new { temperature = Opciones.Temperature, num_predict = Opciones.MaxTokens, num_ctx = Opciones.ContextTokens }
         };
         if (s.SalidaJson) cuerpo["format"] = "json";

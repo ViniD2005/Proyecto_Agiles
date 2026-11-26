@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace EduMonitor.Analytics.Api.Agente;
 
-public record SalidaChat(IReadOnlyList<string> Inferencias, IReadOnlyList<string> Recomendaciones, IReadOnlyList<string> Incertidumbre);
+public record SalidaChat(IReadOnlyList<string> Inferencias, IReadOnlyList<string> Recomendaciones, IReadOnlyList<string> Incertidumbre, string? Respuesta = null);
 
 /// <summary>Lectura tolerante del JSON que devuelven los modelos pequeños (a veces añaden texto o markdown alrededor).</summary>
 public static class SalidaModelo
@@ -65,6 +65,23 @@ public static class SalidaModelo
         return (espacio > 0 ? tramo[..espacio] : tramo).TrimEnd(',', ';', ':', ' ') + "…";
     }
 
+    public const int MaxRespuesta = 600;
+
+    /// <summary>Respuesta conversacional del modelo (texto o lista de frases unidas). Null si no hay.</summary>
+    public static string? Respuesta(JsonElement obj)
+    {
+        var p = obj.EnumerateObject().FirstOrDefault(x => string.Equals(x.Name, "respuesta", StringComparison.OrdinalIgnoreCase));
+        if (p.Value.ValueKind == JsonValueKind.Undefined) return null;
+        var partes = new List<string>();
+        if (p.Value.ValueKind == JsonValueKind.String) partes.Add(p.Value.GetString() ?? "");
+        else if (p.Value.ValueKind == JsonValueKind.Array)
+            foreach (var e in p.Value.EnumerateArray()) if (e.ValueKind == JsonValueKind.String) partes.Add(e.GetString() ?? "");
+        var texto = string.Join(" ", partes.Select(x => x.Replace('\n', ' ').Replace('\r', ' ').Trim()).Where(x => x.Length > 0));
+        while (texto.Contains("  ")) texto = texto.Replace("  ", " ");
+        if (texto.Length == 0) return null;
+        return texto.Length <= MaxRespuesta ? texto : CortarEnFrase(texto, MaxRespuesta);
+    }
+
     public static SalidaChat? ParsearChat(string? texto)
     {
         var obj = ExtraerObjeto(texto);
@@ -72,6 +89,8 @@ public static class SalidaModelo
         var inferencias = Lista(obj.Value, "inferencias");
         var recomendaciones = Lista(obj.Value, "recomendaciones");
         var incertidumbre = Lista(obj.Value, "incertidumbre");
-        return inferencias.Count + recomendaciones.Count + incertidumbre.Count == 0 ? null : new SalidaChat(inferencias, recomendaciones, incertidumbre);
+        var respuesta = Respuesta(obj.Value);
+        return inferencias.Count + recomendaciones.Count + incertidumbre.Count == 0 && respuesta is null
+            ? null : new SalidaChat(inferencias, recomendaciones, incertidumbre, respuesta);
     }
 }

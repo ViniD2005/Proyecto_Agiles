@@ -205,4 +205,88 @@ public class AgenteLogicaTests
         var corto = SalidaModelo.CortarEnFrase(string.Join(" ", Enumerable.Repeat("palabra", 80)), 100);
         Assert.True(corto.EndsWith("palabra…"), corto);
     }
+
+    // ---------------------------------------------------------------- persona inexistente
+    private static readonly string[] Materias = { "Programación Web - Cuarto B", "Base de Datos - Cuarto B" };
+
+    [Theory]
+    [InlineData("existe el estudiante Vini Arias?", "Vini Arias")]
+    [InlineData("¿Cómo va Pedro Pérez?", "Pedro Pérez")]
+    [InlineData("Existe la alumna Ana Torres", "Ana Torres")]
+    [InlineData("existe el estudiante vini arias?", "Vini Arias")]
+    [InlineData("existe el estudiante vini arias en el curso?", "Vini Arias")]
+    public void UnaPersonaQueNoEsDelCursoSeDetecta(string pregunta, string esperado) =>
+        Assert.Equal(esperado, PlanificadorConsulta.NombreNoReconocido(pregunta, Array.Empty<int>(), Materias));
+
+    [Theory]
+    [InlineData("¿Qué estudiantes están en riesgo y por qué?")]
+    [InlineData("¿Cómo va el curso?")]
+    [InlineData("¿Cómo va Programación Web?")]
+    [InlineData("¿Quién ganó el mundial de fútbol?")]
+    [InlineData("¿Qué estudiante está en riesgo?")]
+    [InlineData("¿Existe alguna alerta?")]
+    [InlineData("¿Cómo está el rendimiento del curso?")]
+    [InlineData("¿Cómo va mi clase?")]
+    [InlineData("¿Cómo va el parcial?")]
+    [InlineData("¿Cómo está Moodle?")]
+    public void LasPreguntasDelCursoNoSeTomanPorUnaPersona(string pregunta) =>
+        Assert.Null(PlanificadorConsulta.NombreNoReconocido(pregunta, Array.Empty<int>(), Materias));
+
+    [Fact]
+    public void SiElEstudianteSiExisteNoSeRechaza() =>
+        Assert.Null(PlanificadorConsulta.NombreNoReconocido("¿Cómo va Joel Herrera?", new[] { 12 }, Materias));
+
+    // ---------------------------------------------------------------- respuesta conversacional (v4)
+    [Theory]
+    [InlineData("¿Qué estudiantes existen en el curso?")]
+    [InlineData("dame la lista de estudiantes")]
+    [InlineData("¿Cuántos estudiantes hay?")]
+    public void LasPreguntasDeListadoSeMarcanComoListado(string pregunta)
+    {
+        var plan = PlanificadorConsulta.Planificar(pregunta, Array.Empty<int>(), 7);
+        Assert.True(plan.Enfoque.HasFlag(Enfoque.Listado));
+        Assert.False(plan.FueraDeAlcance);
+        Assert.False(plan.Enfoque.HasFlag(Enfoque.Riesgo));
+    }
+
+    [Theory]
+    [InlineData("¿Quiénes tienen las mejores notas?")]
+    [InlineData("¿Quién tiene la nota más baja?")]
+    public void LasPreguntasDeRankingSeMarcanComoRanking(string pregunta)
+    {
+        var plan = PlanificadorConsulta.Planificar(pregunta, Array.Empty<int>(), 7);
+        Assert.True(plan.Enfoque.HasFlag(Enfoque.Ranking));
+        Assert.False(plan.FueraDeAlcance);
+    }
+
+    [Theory]
+    [InlineData("hola")]
+    [InlineData("Buenas tardes")]
+    [InlineData("¿Qué puedes hacer?")]
+    [InlineData("gracias")]
+    public void ElSaludoYLaAyudaTienenRespuestaFija(string pregunta)
+        => Assert.False(string.IsNullOrWhiteSpace(PlanificadorConsulta.RespuestaConversacional(pregunta)));
+
+    [Theory]
+    [InlineData("¿Qué estudiantes están en riesgo?")]
+    [InlineData("hola, ¿qué estudiantes están en riesgo en el curso?")]
+    [InlineData("¿Quién ganó el mundial?")]
+    public void UnaConsultaRealNoSeTrataComoCharla(string pregunta)
+        => Assert.Null(PlanificadorConsulta.RespuestaConversacional(pregunta));
+
+    [Fact]
+    public void RespuestaPorReglas_ListadoNombraALosEstudiantes()
+    {
+        var r = AgenteOrquestador.RespuestaPorReglas(Enfoque.Listado, "Programación", new[] { "x" }, new[] { "Ana Torres", "Luis Mora" });
+        Assert.Contains("2 estudiante", r);
+        Assert.Contains("Ana Torres", r);
+    }
+
+    [Fact]
+    public void ElParserLeeLaRespuestaConversacionalDelModelo()
+    {
+        var s = SalidaModelo.ParsearChat("{\"respuesta\":\"En el curso hay 3 estudiantes.\",\"inferencias\":[],\"recomendaciones\":[],\"incertidumbre\":[]}");
+        Assert.NotNull(s);
+        Assert.Equal("En el curso hay 3 estudiantes.", s!.Respuesta);
+    }
 }

@@ -13,16 +13,21 @@ public static class SelectorHechos
     private static bool Contiene(string linea, params string[] claves) =>
         claves.Any(c => Anonimizador.Normalizar(linea).Contains(c));
 
+    // líneas largas de listado y ranking: solo se usan cuando la pregunta es de listado, ranking o calificaciones
+    private static bool EsListado(string linea) =>
+        linea.StartsWith("Listado de estudiantes") || linea.StartsWith("Mejores notas ponderadas");
+
     public static Seleccion Elegir(Enfoque enfoque, IReadOnlyList<(string Nombre, ResultadoHerramienta Resultado)> exitosas)
     {
         var hechos = new List<string>();
         var datos = new List<string>();
 
-        void Tomar(string herramienta, Func<string, bool>? filtro = null, int? primeras = null, bool conDatos = true)
+        void Tomar(string herramienta, Func<string, bool>? filtro = null, int? primeras = null, bool conDatos = true, bool listados = false)
         {
             foreach (var x in exitosas.Where(e => e.Nombre == herramienta))
             {
                 var lineas = x.Resultado.Hechos.AsEnumerable();
+                if (!listados) lineas = lineas.Where(l => !EsListado(l));
                 if (filtro is not null) lineas = lineas.Where(filtro);
                 if (primeras is not null) lineas = lineas.Take(primeras.Value);
                 hechos.AddRange(lineas);
@@ -35,6 +40,14 @@ public static class SelectorHechos
             // la pregunta es sobre una persona: su ficha y, como referencia, solo la línea del promedio del curso
             Tomar("obtener_ficha_estudiante");
             Tomar("obtener_calificaciones", primeras: 1, conDatos: false);
+            return Distintos(hechos, datos);
+        }
+
+        // «¿Qué estudiantes hay?», «¿quién tiene la mejor nota?»: solo promedio, niveles, notas y el listado pedido
+        var otras = Enfoque.Riesgo | Enfoque.Alertas | Enfoque.Temas | Enfoque.Entregas;
+        if ((enfoque.HasFlag(Enfoque.Listado) || enfoque.HasFlag(Enfoque.Ranking)) && (enfoque & otras) == 0)
+        {
+            Tomar("obtener_calificaciones", conDatos: false, listados: true);
             return Distintos(hechos, datos);
         }
 
@@ -73,7 +86,7 @@ public static class SelectorHechos
         }
         if (enfoque.HasFlag(Enfoque.Calificaciones))
         {
-            Tomar("obtener_calificaciones");
+            Tomar("obtener_calificaciones", listados: true);
             Tomar("generar_resumen", l => Contiene(l, "grupos diferenciados", "peso evaluado"), conDatos: false);
         }
         return Distintos(hechos, datos);

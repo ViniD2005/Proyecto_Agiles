@@ -38,7 +38,8 @@ public sealed class LlmOptions
     public string? ApiKey { get; set; }
     public int TimeoutSeconds { get; set; } = 120;
     public double Temperature { get; set; } = 0.2;
-    public int MaxTokens { get; set; } = 700;
+    /// <summary>Tope de tokens generados. En CPU el modelo genera ≈6 tokens/s: 400 evita esperas de varios minutos.</summary>
+    public int MaxTokens { get; set; } = 400;
     /// <summary>Ventana de contexto que se pide a Ollama (num_ctx); por defecto 4096 para que el prompt no se trunque.</summary>
     public int ContextTokens { get; set; } = 4096;
 }

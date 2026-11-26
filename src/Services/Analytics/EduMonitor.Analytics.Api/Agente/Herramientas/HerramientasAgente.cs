@@ -53,6 +53,19 @@ public sealed class ObtenerCalificacionesTool(AnaliticaService analitica) : IHer
         if (bajos.Count > 0)
             hechos.Add("Notas ponderadas más bajas: " + string.Join(" · ", bajos.Select(e => $"{Marcador.Est(e.EstudianteId)} {F(e.NotaPonderada)}")) + ".");
 
+        // Para preguntas de listado y de ranking (el selector las usa solo cuando la pregunta lo pide)
+        const int MaxListado = 40;
+        var todos = d.Estudiantes.OrderBy(e => e.EstudianteId).ToList();
+        if (todos.Count > 0)
+            hechos.Add($"Listado de estudiantes ({todos.Count}): " +
+                string.Join(" · ", todos.Take(MaxListado).Select(e => e.NotaPonderada.HasValue
+                    ? $"{Marcador.Est(e.EstudianteId)} ({F(e.NotaPonderada)}, {ObtenerDesempenoTemasTool.NivelTexto(e.Nivel)})"
+                    : $"{Marcador.Est(e.EstudianteId)} (sin datos)")) +
+                (todos.Count > MaxListado ? $" y {todos.Count - MaxListado} más." : "."));
+        var mejores = d.Estudiantes.Where(e => e.NotaPonderada.HasValue).OrderByDescending(e => e.NotaPonderada).Take(5).ToList();
+        if (mejores.Count > 0)
+            hechos.Add("Mejores notas ponderadas: " + string.Join(" · ", mejores.Select(e => $"{Marcador.Est(e.EstudianteId)} {F(e.NotaPonderada)}")) + ".");
+
         return ResultadoHerramienta.Ok($"{c.Estudiantes} estudiantes, promedio {F(c.Promedio)}", hechos, new
         {
             materia = d.Materia,
