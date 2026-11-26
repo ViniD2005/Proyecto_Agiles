@@ -8,6 +8,8 @@ import '../styles-sprint3.css'
 
 const SUGERENCIAS = [
   '¿Qué estudiantes están en riesgo y por qué?',
+  '¿Qué estudiantes existen en el curso?',
+  '¿Quiénes tienen las mejores notas?',
   '¿Qué temas tienen peor desempeño en el curso?',
   'Dame un resumen del curso',
   '¿Hay actividades sin entrega o con nota cero?'
@@ -25,6 +27,7 @@ function Lista({ titulo, items, clase }) {
 
 function Respuesta({ r }) {
   const [verHerramientas, setVerHerramientas] = useState(false)
+  const tieneDetalle = [r.hechos, r.inferencias, r.recomendaciones, r.incertidumbre].some(l => l?.length)
   return (
     <div className="burbuja agente">
       <div className="burbuja-cab">
@@ -32,14 +35,21 @@ function Respuesta({ r }) {
         <small className="muted">{r.materia} · {fechaHora(r.fechaUtc)}</small>
       </div>
       {r.advertencias.map((a, i) => <div key={i} className="alerta aviso">{a}</div>)}
-      <Lista titulo="Hechos (calculados por el sistema)" items={r.hechos} clase="hechos" />
-      <Lista titulo="Inferencias del modelo" items={r.inferencias} clase="inferencias" />
-      <Lista titulo="Recomendaciones" items={r.recomendaciones} clase="recomendaciones" />
-      <Lista titulo="Incertidumbre" items={r.incertidumbre} clase="incertidumbre" />
+      {r.respuesta && <p className="respuesta-directa" style={{ fontSize: '1.05em', lineHeight: 1.5, margin: '8px 0' }}>{r.respuesta}</p>}
+      {tieneDetalle && (
+        <details open={!r.respuesta} style={{ marginTop: 8 }}>
+          <summary className="muted" style={{ cursor: 'pointer' }}>Detalle y evidencia</summary>
+          <Lista titulo="Hechos (calculados por el sistema)" items={r.hechos} clase="hechos" />
+          <Lista titulo="Inferencias del modelo" items={r.inferencias} clase="inferencias" />
+          <Lista titulo="Recomendaciones" items={r.recomendaciones} clase="recomendaciones" />
+          <Lista titulo="Incertidumbre" items={r.incertidumbre} clase="incertidumbre" />
+        </details>
+      )}
       <div className="pie-respuesta">
         <span className="muted">
           {r.intencion === 'Fuera de alcance'
             ? 'Consulta fuera del alcance del agente'
+            : r.intencion === 'Conversación' ? 'Respuesta directa del asistente'
             : r.modeloDisponible ? `Modelo: ${r.modelo}` : 'Sin modelo de lenguaje: respuesta por reglas del sistema'}
           {' · '}intención: {r.intencion}
         </span>

@@ -23,7 +23,7 @@ public class AgenteOrquestador(
     IAuditClient audit, ILogger<AgenteOrquestador> logger)
 {
     public const int MaxPregunta = 500;
-    private const int MaxHechosModelo = 3000, MaxDatosModelo = 3500, MaxHechosRespuesta = 14;
+    private const int MaxHechosModelo = 1600, MaxHechosRespuesta = 14;
 
     public const string MensajeFueraDeAlcance =
         "Solo respondo consultas sobre el rendimiento de tus cursos: estudiantes, notas, riesgo, alertas, entregas, temas o recomendaciones. " +
@@ -71,7 +71,46 @@ public class AgenteOrquestador(
         db.ConsultasAgente.Add(consulta);
         await db.SaveChangesAsync(ct);
 
-        // ---------- 3b) pregunta ajena al curso: no se consulta el modelo ni se inventa una respuesta
+        // ---------- 3a) persona que no existe en el curso: se responde sin consultar al modelo (evita confundirla con otro estudiante)
+        var desconocido = PlanificadorConsulta.NombreNoReconocido(pregunta, mencionados, propias.Select(p => p.Nombre));
+        if (desconocido is not null)
+        {
+            var nombres = estudiantes.Select(e => $"{e.Nombres} {e.Apellidos}".Trim()).OrderBy(n => n).ToList();
+            consulta.Resultado = "SinEstudiante"; // máx. 20 caracteres (columna Resultado)
+            consulta.ModeloDisponible = false;
+            consulta.DuracionMs = (int)reloj.ElapsedMilliseconds;
+            await db.SaveChangesAsync(ct);
+            await AuditarAsync(consulta, Array.Empty<(string, IReadOnlyDictionary<string, string>, ResultadoHerramienta, int)>(), ct);
+            return Resultado<AgenteRespuestaDto>.Ok(new AgenteRespuestaDto(
+                consulta.Id, req.MateriaId, materia.Nombre, "Estudiante no encontrado", Array.Empty<InvocacionDto>(),
+                new[]
+                {
+                    $"No hay ningún estudiante llamado «{desconocido}» en «{materia.Nombre}».",
+                    $"Estudiantes de la materia ({nombres.Count}): {string.Join(", ", nombres)}."
+                },
+                Array.Empty<string>(), Array.Empty<string>(),
+                new[] { "Revisa la ortografía o prueba solo con el nombre o el apellido." }, null, false,
+                Array.Empty<string>(), consulta.FechaUtc,
+                $"No encontré ningún estudiante llamado «{desconocido}» en «{materia.Nombre}». Revisa el nombre o prueba solo con el apellido."));
+        }
+
+        // ---------- 3b) saludo, agradecimiento o «¿qué puedes hacer?»: respuesta amable sin consultar datos ni modelo
+        var charla = PlanificadorConsulta.RespuestaConversacional(pregunta);
+        if (charla is not null)
+        {
+            consulta.Intencion = "Conversación";
+            consulta.Resultado = "Conversacion";
+            consulta.ModeloDisponible = false;
+            consulta.DuracionMs = (int)reloj.ElapsedMilliseconds;
+            await db.SaveChangesAsync(ct);
+            await AuditarAsync(consulta, Array.Empty<(string, IReadOnlyDictionary<string, string>, ResultadoHerramienta, int)>(), ct);
+            return Resultado<AgenteRespuestaDto>.Ok(new AgenteRespuestaDto(
+                consulta.Id, req.MateriaId, materia.Nombre, "Conversación", Array.Empty<InvocacionDto>(),
+                Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>(), null, false,
+                Array.Empty<string>(), consulta.FechaUtc, charla));
+        }
+
+        // ---------- 3c) pregunta ajena al curso: no se consulta el modelo ni se inventa una respuesta
         if (plan.FueraDeAlcance)
         {
             consulta.Resultado = "FueraDeAlcance";
@@ -82,7 +121,7 @@ public class AgenteOrquestador(
             return Resultado<AgenteRespuestaDto>.Ok(new AgenteRespuestaDto(
                 consulta.Id, req.MateriaId, materia.Nombre, plan.Intencion, Array.Empty<InvocacionDto>(),
                 Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>(), null, false,
-                new[] { MensajeFueraDeAlcance }, consulta.FechaUtc));
+                new[] { MensajeFueraDeAlcance }, consulta.FechaUtc, MensajeFueraDeAlcance));
         }
 
         // ---------- 4) herramientas: parámetros validados, fallos controlados, todo registrado (HU-13, criterios 2 y 3)
@@ -142,13 +181,14 @@ public class AgenteOrquestador(
         var inferencias = new List<string>();
         var recomendaciones = new List<string>();
         string? modeloUsado = null;
+        string? respuestaModelo = null;
         var modeloDisponible = false;
 
         try
         {
             var mensajes = ConstruirMensajes(preguntaAnonima, anon, seleccion);
-            var respuesta = await llm.CompletarAsync(new LlmSolicitud(mensajes, SalidaJson: true), ct);
-            var salida = SalidaModelo.ParsearChat(respuesta.Texto);
+            var llmResp = await llm.CompletarAsync(new LlmSolicitud(mensajes, SalidaJson: true), ct);
+            var salida = SalidaModelo.ParsearChat(llmResp.Texto);
             if (salida is null)
             {
                 advertencias.Add("El modelo devolvió un formato inesperado; se muestran solo hechos y recomendaciones basadas en reglas.");
@@ -172,6 +212,8 @@ public class AgenteOrquestador(
                     }
                     return ok;
                 }
+                if (!string.IsNullOrWhiteSpace(salida.Respuesta))
+                    respuestaModelo = Filtrar(new[] { salida.Respuesta }, false).FirstOrDefault();
                 inferencias.AddRange(Filtrar(salida.Inferencias, false));
                 recomendaciones.AddRange(Filtrar(salida.Recomendaciones, false));
                 incertidumbre.AddRange(Filtrar(salida.Incertidumbre, true));
@@ -186,7 +228,8 @@ public class AgenteOrquestador(
         }
 
         var preguntaDeEstudiante = plan.Enfoque.HasFlag(Enfoque.Estudiante);
-        if (recomendaciones.Count == 0 && curso is not null && !preguntaDeEstudiante)
+        var pideRecomendar = (plan.Enfoque & (Enfoque.Riesgo | Enfoque.Temas | Enfoque.Alertas | Enfoque.Resumen)) != 0;
+        if (recomendaciones.Count == 0 && curso is not null && !preguntaDeEstudiante && pideRecomendar)
         {
             recomendaciones.AddRange(ReglasCurso.Recomendaciones(curso));
             if (modeloDisponible) advertencias.Add("El modelo no propuso recomendaciones válidas; se usaron las reglas del sistema.");
@@ -195,6 +238,10 @@ public class AgenteOrquestador(
             incertidumbre.Add("No hay inferencias del modelo: lo mostrado son solo datos calculados y reglas.");
 
         incertidumbre = incertidumbre.Distinct().ToList();
+
+        // respuesta directa: la del modelo si superó la validación; si no, una armada por reglas con los mismos datos
+        var respuesta = respuestaModelo ?? RespuestaPorReglas(plan.Enfoque, materia.Nombre, hechos,
+            estudiantes.Select(e => $"{e.Nombres} {e.Apellidos}".Trim()).OrderBy(n => n).ToList());
 
         // ---------- 8) cierre: registro y auditoría
         consulta.Resultado = "Respondida";
@@ -206,7 +253,7 @@ public class AgenteOrquestador(
 
         return Resultado<AgenteRespuestaDto>.Ok(new AgenteRespuestaDto(
             consulta.Id, req.MateriaId, materia.Nombre, plan.Intencion, invocaciones,
-            hechos, inferencias, recomendaciones, incertidumbre, modeloUsado, modeloDisponible, advertencias, consulta.FechaUtc));
+            hechos, inferencias, recomendaciones, incertidumbre, modeloUsado, modeloDisponible, advertencias, consulta.FechaUtc, respuesta));
     }
 
     // ------------------------------------------------------------------ herramientas
@@ -235,19 +282,33 @@ public class AgenteOrquestador(
 
     // ------------------------------------------------------------------ mensajes para el modelo
     public const string InstruccionesSistema =
-        "Eres el asistente pedagógico de EduMonitor AI para docentes universitarios. Responde siempre en español.\n" +
+        "Eres el asistente pedagógico de EduMonitor AI para docentes universitarios. Hablas en español, con tono cercano y profesional, como un colega que conoce el curso.\n" +
         "Reglas obligatorias:\n" +
-        "1. Usa únicamente los DATOS entregados. Si un dato no aparece, indícalo; no inventes notas, estudiantes, temas ni porcentajes.\n" +
-        "2. Los estudiantes se identifican solo con códigos (E01, E02…). No inventes códigos ni nombres.\n" +
-        "3. Los números ya fueron calculados por el sistema: no los recalcules ni los cambies.\n" +
-        "4. Tus sugerencias son orientativas y las revisará el docente.\n" +
-        "5. Responde SOLO a la pregunta del docente: cada inferencia y recomendación debe tratar de lo preguntado. Si la pregunta es sobre un estudiante, habla únicamente de ese estudiante.\n" +
-        "6. Cita las cifras tal como aparecen en los HECHOS. No afirmes tendencias, causas, asistencia ni «sin datos» que los HECHOS no indiquen.\n" +
+        "1. Contesta DIRECTAMENTE lo que pregunta el docente usando únicamente los HECHOS entregados. Si los hechos no contienen lo que pregunta, dilo con claridad; no inventes.\n" +
+        "2. Los estudiantes se identifican solo con códigos (E01, E02…). No inventes códigos, nombres ni cifras; cita las cifras tal como aparecen.\n" +
+        "3. No afirmes tendencias, causas, asistencia ni «sin datos» que los HECHOS no indiquen.\n" +
+        "4. Si la pregunta es sobre un estudiante, habla solo de ese estudiante.\n" +
+        "5. Tus sugerencias son orientativas y las revisará el docente.\n" +
         "Devuelve SOLO un objeto JSON con esta forma exacta:\n" +
-        "{\"inferencias\":[\"...\"],\"recomendaciones\":[\"...\"],\"incertidumbre\":[\"...\"]}\n" +
-        "- inferencias: interpretaciones razonables de los datos (máximo 3); cada una indica en qué dato se apoya.\n" +
-        "- recomendaciones: acciones concretas para el docente (máximo 3).\n" +
-        "- incertidumbre: límites o datos faltantes que afectan la respuesta (puede ir vacío).";
+        "{\"respuesta\":\"...\",\"inferencias\":[],\"recomendaciones\":[],\"incertidumbre\":[]}\n" +
+        "- respuesta: de 1 a 3 frases naturales que contestan la pregunta, sin repetir todos los hechos.\n" +
+        "- inferencias: máximo 1, solo si añade algo que la respuesta no dice (puede ir vacío).\n" +
+        "- recomendaciones: máximo 2, concretas, solo si la pregunta lo amerita (puede ir vacío si solo pidió un dato).\n" +
+        "- incertidumbre: vacío, salvo que falte un dato que afecte la respuesta.";
+
+    /// <summary>Respuesta directa armada por el código con los hechos seleccionados (cuando el modelo no responde o su texto no se valida).</summary>
+    public static string RespuestaPorReglas(Enfoque enfoque, string materia, IReadOnlyList<string> hechosDocente, IReadOnlyList<string> nombresEstudiantes)
+    {
+        if (enfoque.HasFlag(Enfoque.Listado) && nombresEstudiantes.Count > 0)
+            return $"En «{materia}» hay {nombresEstudiantes.Count} estudiante(s): {string.Join(", ", nombresEstudiantes.Take(40))}.";
+        if (enfoque.HasFlag(Enfoque.Ranking))
+        {
+            var ranking = hechosDocente.Where(h => h.StartsWith("Mejores notas") || h.StartsWith("Notas ponderadas más bajas")).Take(2).ToList();
+            if (ranking.Count > 0) return string.Join(" ", ranking);
+        }
+        if (hechosDocente.Count == 0) return "No encontré datos suficientes para responder esta consulta.";
+        return string.Join(" ", hechosDocente.Take(2));
+    }
 
     public static IReadOnlyList<LlmMensaje> ConstruirMensajes(
         string preguntaAnonima, Anonimizador anon, SelectorHechos.Seleccion seleccion)
@@ -255,14 +316,11 @@ public class AgenteOrquestador(
         var hechos = new StringBuilder();
         foreach (var linea in seleccion.Hechos)
             hechos.AppendLine("- " + anon.ParaModelo(linea));
-        var datos = new StringBuilder();
-        foreach (var d in seleccion.Datos)
-            datos.AppendLine(anon.ParaModelo(d));
-
+        // Sin el detalle JSON: los hechos ya traen las cifras y el validador solo acepta cifras de los hechos, así que el JSON
+        // solo alargaba el prompt (y la espera) sin aportar nada utilizable.
         var usuario =
             $"PREGUNTA DEL DOCENTE: {preguntaAnonima}\n\n" +
-            $"HECHOS VERIFICADOS (calculados por el sistema):\n{Cortar(hechos.ToString(), MaxHechosModelo)}\n" +
-            $"DETALLE (JSON):\n{Cortar(datos.ToString(), MaxDatosModelo)}";
+            $"HECHOS VERIFICADOS (calculados por el sistema):\n{CortarLineas(hechos.ToString(), MaxHechosModelo)}";
 
         return new[] { new LlmMensaje(LlmMensaje.Sistema, InstruccionesSistema), new LlmMensaje(LlmMensaje.Usuario, usuario) };
     }
@@ -323,4 +381,17 @@ public class AgenteOrquestador(
     }
 
     private static string Cortar(string t, int max) => t.Length <= max ? t : t[..max];
+
+    /// <summary>Recorta por líneas completas para no dejar un hecho cortado a la mitad.</summary>
+    private static string CortarLineas(string t, int max)
+    {
+        if (t.Length <= max) return t;
+        var sb = new StringBuilder();
+        foreach (var linea in t.Split('\n'))
+        {
+            if (sb.Length + linea.Length + 1 > max) break;
+            sb.AppendLine(linea.TrimEnd('\r'));
+        }
+        return sb.ToString();
+    }
 }

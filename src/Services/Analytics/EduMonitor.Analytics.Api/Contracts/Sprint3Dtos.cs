@@ -15,7 +15,7 @@ public record AgenteRespuestaDto(
     IReadOnlyList<InvocacionDto> Herramientas,
     IReadOnlyList<string> Hechos, IReadOnlyList<string> Inferencias, IReadOnlyList<string> Recomendaciones,
     IReadOnlyList<string> Incertidumbre, string? Modelo, bool ModeloDisponible,
-    IReadOnlyList<string> Advertencias, DateTime FechaUtc);
+    IReadOnlyList<string> Advertencias, DateTime FechaUtc, string? Respuesta = null);
 
 public record EstadoAgenteDto(string Proveedor, string Modelo, bool Disponible, string? Detalle, IReadOnlyList<string> Herramientas);
 
